@@ -15,7 +15,7 @@ public class Odometer extends Thread {
 	//member variables
 	private double x, y, theta;
 	private final double TRACK, WHEEL_RADIUS;
-	private static final int PERIOD = 25;	//the maximum speed the odometer can operate at
+	private final static int PERIOD = 25;	//the maximum speed the odometer can operate at
 	private final EV3LargeRegulatedMotor leftMotor;
 	private final EV3LargeRegulatedMotor rightMotor;
 	private final EV3GyroSensor gyroSensor;

@@ -13,9 +13,9 @@ public class Navigator extends Thread{
 	private Odometer odometer;
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
 	private double targetX, targetY, targetT, relativeT;
-	private final static double TOLERANCE = 1.0, ANGLE_TOLERANCE = Math.PI / 64;
+	private static final double TOLERANCE = 1.0, ANGLE_TOLERANCE = Math.PI / 64;
 	private static final int FORWARD_SPEED = 400, ROTATE_SPEED = 200;
-	private final static double MIN_SPEED_RATIO = 0.2;
+	private static final double MIN_SPEED_RATIO = 0.2;
 	private static final int PERIOD = 50;
 	private Object lock;
 	private boolean navigating;
