@@ -3,6 +3,7 @@ package finalProject;
 import java.util.Arrays;
 
 import lejos.hardware.sensor.SensorMode;
+import lejos.robotics.SampleProvider;
 
 /**
  * The class responsible for filtering sensor data.
@@ -14,7 +15,7 @@ import lejos.hardware.sensor.SensorMode;
 public class Filter {
 	
 	private final Type t;
-	private final SensorMode s;
+	private final SampleProvider s;
 	private float[] samples;
 	private int index;
 	
@@ -35,7 +36,12 @@ public class Filter {
 		/**
 		 * Creates a derivative filter.
 		 */
-		DERIVATIVE
+		DERIVATIVE,
+		
+		/**
+		 * Creates an empty filter.
+		 */
+		EMPTY
 	}
 	
 	/**
@@ -46,11 +52,13 @@ public class Filter {
 	 * @param window The amount of samples used to calculate the filtered data.
 	 * If the type is DERIVATIVE, the window will be automatically set to 2.
 	 */
-	public Filter(Type t, SensorMode s, int window){
+	public Filter(Type t, SampleProvider s, int window){
 		this.t= t;
 		this.s = s;
 		if(t == Type.DERIVATIVE)
 			window = 2;
+		if(t == Type.EMPTY)
+			window = 1;
 		samples = new float[window];
 		for(index=0; index<samples.length; index++){
 			s.fetchSample(samples, index);
@@ -97,8 +105,14 @@ public class Filter {
 				if(index == 1)
 					result *= -1;
 				break;
+			case EMPTY:
+				result = samples[0];
 		}
 		
 		return result;
+	}
+	
+	public String toString(){
+		return Utility.truncate(t.toString() + ": " + this.getFilteredData(), 16);
 	}
 }
