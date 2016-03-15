@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 
 import finalProject.Filter;
 
+/**
+ * The class that records sensor readings in a text file.
+ */
 public class SensorRecorder extends Thread{
 	
 	private Filter[] filters;
@@ -13,6 +16,13 @@ public class SensorRecorder extends Thread{
 	private PrintWriter p;
 	private boolean isRunning;
 	
+	/**
+	 * Constructor for sensorRecorder.
+	 * 
+	 * @param filters The filtered sensor values that are to be recorded.
+	 * @param period The time interval to record at, in ms.
+	 * @param fileName The name of the text file to save the data to.
+	 */
 	public SensorRecorder(Filter[] filters, int period, String fileName){
 		this.filters = filters;
 		this.PERIOD = period;
@@ -21,6 +31,7 @@ public class SensorRecorder extends Thread{
 		try{this.p = new PrintWriter(new FileOutputStream(f));}catch(Exception e){}
 	}
 	
+	//required for thread
 	public void run(){
 		
 		long start, end;
@@ -46,6 +57,9 @@ public class SensorRecorder extends Thread{
 		}
 	}
 	
+	/**
+	 * Stops the sensor recording and saves it in the text file.
+	 */
 	public void stopRecording(){
 		isRunning = false;
 		p.close();

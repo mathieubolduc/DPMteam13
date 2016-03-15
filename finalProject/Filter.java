@@ -2,7 +2,6 @@ package finalProject;
 
 import java.util.Arrays;
 
-import lejos.hardware.sensor.SensorMode;
 import lejos.robotics.SampleProvider;
 
 /**
@@ -39,7 +38,7 @@ public class Filter {
 		DERIVATIVE,
 		
 		/**
-		 * Creates an empty filter.
+		 * Creates a filter which copies the sensor value.
 		 */
 		EMPTY
 	}
@@ -50,7 +49,7 @@ public class Filter {
 	 * @param t The type of filter used.
 	 * @param s The sensor (and mode) that will be filtered.
 	 * @param window The amount of samples used to calculate the filtered data.
-	 * If the type is DERIVATIVE, the window will be automatically set to 2.
+	 * If the type is DERIVATIVE, the window will be automatically set to 2. If the type is EMPTY, the window will be set to 1.
 	 */
 	public Filter(Type t, SampleProvider s, int window){
 		this.t= t;
@@ -107,6 +106,7 @@ public class Filter {
 				break;
 			case EMPTY:
 				result = samples[0];
+				break;
 		}
 		
 		return result;
