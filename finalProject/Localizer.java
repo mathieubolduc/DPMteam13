@@ -2,7 +2,6 @@ package finalProject;
 
 import finalProject.Filter.Type;
 import lejos.hardware.Sound;
-import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
 
@@ -19,9 +18,8 @@ public class Localizer {
 	private final double SENSOR_DISTANCE;
 	private Navigator navigator;
 	private Odometer odometer;
-	private EV3LargeRegulatedMotor usMotor;
-	private final static double LIGHT_THRESHOLD = 1, US_THRESHOLD = 20;
-	private final static int COOLDOWN = 100;
+	private final static double LIGHT_THRESHOLD = 0.06, US_THRESHOLD = 0.4;
+	private final static int COOLDOWN = 300;
 	
 	/**
 	 * Constructor for Localiser.
@@ -33,10 +31,9 @@ public class Localizer {
 	 * @param colorSensor The color sensor.
 	 * @param colorDistance The distance between the color sensor and the center of rotation of the robot.
 	 */
-	public Localizer(Navigator navigator, Odometer odometer, EV3LargeRegulatedMotor usMotor, EV3UltrasonicSensor usSensor, EV3ColorSensor colorSensor, double sensorDistance){
+	public Localizer(Navigator navigator, Odometer odometer, EV3UltrasonicSensor usSensor, EV3ColorSensor colorSensor, double sensorDistance){
 		this.navigator = navigator;
 		this.odometer = odometer;
-		this.usMotor = usMotor;
 		this.SENSOR_DISTANCE = sensorDistance;
 		this.lightFilter = new Filter(Type.DERIVATIVE, colorSensor.getRedMode(), 5);
 		this.usFilter = new Filter(Type.MEDIAN, usSensor.getDistanceMode(), 5);
@@ -83,22 +80,63 @@ public class Localizer {
 		US_AND_LIGHT
 	}
 	
+	//performs a localization using the us sensor by turning 360 deg and detecting 2 walls.
 	private void usLocalization(){
+		
+		//find the angle
+		double[] angles = new double[2];
+		boolean seesWall = false;
+		navigator.turnBy(Math.PI*2);
+		for(int i=0; i<angles.length; i++){
+			seesWall = usFilter.getFilteredData() < US_THRESHOLD;
+			do{
+				usFilter.addSample();
+				try{Thread.sleep(20);}catch(Exception e){}
+			} while(seesWall == (usFilter.getFilteredData() < US_THRESHOLD));
+			Sound.beep();
+			angles[i] = odometer.getTheta();
+			try{Thread.sleep(COOLDOWN);}catch(Exception e){}
+		}
+		navigator.pause();
+		odometer.setTheta((odometer.getTheta() - 0.39 + (angles[0] + angles[1]) / 2 + (seesWall ? 0 : Math.PI)) % (Math.PI*2));
+		
+		//find the Y
+		navigator.turnTo(Math.PI*3/2);
+		navigator.waitForStop();
+		Sound.beep();
+		usFilter.saturateSamples(20);
+		odometer.setY(100*usFilter.getFilteredData()-30);
+		
+		//find the X
+		navigator.turnTo(Math.PI);
+		navigator.waitForStop();
+		Sound.beep();
+		for(int i=0; i<10; i++){
+			usFilter.addSample();
+			try{Thread.sleep(20);}catch(Exception e){}
+		}
+		odometer.setX(100*usFilter.getFilteredData()-30);
 		
 	}
 	
+	//performs a localization using the light sensor by turning 360 deg and detecting 4 lines.
 	private void lightLocalization(){
 		double[] angles = new double[4];
 		int i=0;
+		long time;
 		//turn 360 deg to hopefully go over 4 lines
 		navigator.turnBy(Math.PI*2);
 		while(navigator.isNavigating()){
 			lightFilter.addSample();
 			//if there is a line, record the angle
-			if(lightFilter.getFilteredData() > LIGHT_THRESHOLD){
+			if(Math.abs(lightFilter.getFilteredData()) > LIGHT_THRESHOLD){
 				angles[i] = odometer.getTheta();
 				Sound.beep();
-				try{Thread.sleep(COOLDOWN);}catch(Exception e){}
+				time = System.currentTimeMillis();
+				while(System.currentTimeMillis() - time < COOLDOWN){
+					lightFilter.addSample();
+					try{Thread.sleep(20);}catch(Exception e){}
+				}
 			}
 			else{
 				try{Thread.sleep(50);}catch(Exception e){}
@@ -109,5 +147,13 @@ public class Localizer {
 		odometer.setX(-SENSOR_DISTANCE * Math.cos((angles[0] - angles[2]) / 2));
 		odometer.setY(-SENSOR_DISTANCE * Math.cos((angles[1] - angles[3]) / 2));
 		odometer.setTheta(odometer.getTheta() + Math.PI - (angles[0] + angles[2])/2);
+	}
+	
+	public Filter getUsFilter(){
+		return usFilter;
+	}
+	
+	public Filter getlightFilter(){
+		return lightFilter;
 	}
 }

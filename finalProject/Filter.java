@@ -17,6 +17,7 @@ public class Filter {
 	private final SampleProvider s;
 	private float[] samples;
 	private int index;
+	private Object lock;
 	
 	/**
 	 * The type of filter used. Determines how the filtered data will be calculated from the samples.
@@ -52,6 +53,7 @@ public class Filter {
 	 * If the type is DERIVATIVE, the window will be automatically set to 2. If the type is EMPTY, the window will be set to 1.
 	 */
 	public Filter(Type t, SampleProvider s, int window){
+		lock = new Object();
 		this.t= t;
 		this.s = s;
 		if(t == Type.DERIVATIVE)
@@ -59,17 +61,29 @@ public class Filter {
 		if(t == Type.EMPTY)
 			window = 1;
 		samples = new float[window];
-		for(index=0; index<samples.length; index++){
-			s.fetchSample(samples, index);
-		}
+		saturateSamples(0);
 	}
 	
 	/**
 	 * Adds a new sensor reading to the samples.
 	 */
 	public void addSample(){
-		s.fetchSample(samples, index % samples.length);
-		index++;
+		synchronized (lock) {
+			s.fetchSample(samples, index % samples.length);
+			index++;
+		}
+	}
+	
+	/**
+	 * Fills the entire sample array with new readings separated by a time interval.
+	 * 
+	 * @param period The time interval between two readings.
+	 */
+	public void saturateSamples(int period){
+		for(int i=0; i<samples.length; i++){
+			addSample();
+			try{Thread.sleep(period);}catch(Exception e){}
+		}
 	}
 	
 	/**
@@ -82,13 +96,17 @@ public class Filter {
 	 */
 	public double getFilteredData(){
 		double result = 0.0;
-		
-		switch(t){
+		synchronized (lock) {
+			switch(t){
 			case AVERAGE:
+				int i=0;
 				for(float f : samples){
-					result += f;
+					if(f != Float.POSITIVE_INFINITY){
+						result += f;
+						i++;
+					}
 				}
-				result /= samples.length;
+				result = (i == 0) ? Float.POSITIVE_INFINITY : result / i;
 				break;
 			
 			case MEDIAN:
@@ -104,9 +122,11 @@ public class Filter {
 				if(index == 1)
 					result *= -1;
 				break;
+				
 			case EMPTY:
 				result = samples[0];
 				break;
+			}
 		}
 		
 		return result;
