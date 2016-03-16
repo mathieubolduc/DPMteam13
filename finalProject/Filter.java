@@ -111,7 +111,12 @@ public class Filter {
 		
 		return result;
 	}
-	
+
+	/**
+	 * Returns a string representation of the filter's current value which fits the EV3's LCD screen.
+	 * 
+	 * @return The filter's current value, in string form.
+	 */
 	public String toString(){
 		return Utility.truncate(t.toString() + ": " + this.getFilteredData(), 16);
 	}

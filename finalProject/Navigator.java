@@ -19,7 +19,7 @@ public class Navigator extends Thread{
 	private static final int PERIOD = 50;
 	private Object lock;
 	private boolean navigating;
-	
+	private boolean forward;
 	
 	
 	/**
@@ -34,6 +34,7 @@ public class Navigator extends Thread{
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
 		navigating = false;
+		forward = true;
 		targetX = Double.NaN; //targets are set to NaN whenever we do not want to have any target
 		targetY = Double.NaN;
 		targetT = Double.NaN;
@@ -91,12 +92,19 @@ public class Navigator extends Thread{
 							forwardSpeed = (int) (Math.min(Math.sqrt(Math.pow(odometer.getX() - targetX, 2) + Math.pow(odometer.getY() - targetY, 2))/5 + MIN_SPEED_RATIO, 1) * FORWARD_SPEED);
 							leftMotor.setSpeed(forwardSpeed);
 							rightMotor.setSpeed(forwardSpeed);
-							leftMotor.forward();
-							rightMotor.forward();
+							if(forward){
+								leftMotor.forward();
+								rightMotor.forward();
+							}
+							else{
+								leftMotor.backward();
+								rightMotor.backward();
+							}
 						}
 						//nothing to correct: the robot is at its destination
 						else{
 							navigating = false;
+							forward = true;
 							leftMotor.stop(true);
 							rightMotor.stop();
 							targetX = Double.NaN;
@@ -158,6 +166,8 @@ public class Navigator extends Thread{
 			targetT = Math.atan2(targetY - odometer.getY(), targetX - odometer.getX());
 			if(targetT < 0)
 				targetT += Math.PI * 2;
+			if(!forward)
+				targetT = (targetT + Math.PI) % (Math.PI * 2);
 		}
 	}
 	
@@ -173,6 +183,7 @@ public class Navigator extends Thread{
 	public void turnTo(double theta){
 		synchronized (lock) {
 			navigating = true;
+			forward = true;
 			targetT = theta;
 			targetX = Double.NaN;
 			targetY = Double.NaN;
@@ -190,6 +201,7 @@ public class Navigator extends Thread{
 	public void turnBy(double theta){
 		synchronized (lock) {
 			navigating = true;
+			forward = true;
 			targetX = Double.NaN;
 			targetY = Double.NaN;
 			targetT = Double.NaN;
@@ -209,6 +221,29 @@ public class Navigator extends Thread{
 	public void travelTo(double x, double y){
 		synchronized (lock) {
 			navigating = true;
+			forward = true;
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+	}
+
+	/**
+	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
+	 * Minor corrections may be done along the path so that the robot always faces its destination.
+	 * The final orientation of the robot is somewhat random due to those corrections.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param x The x coordinate of the target destination.
+	 * @param y The y coordinate of the target destination.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void travelTo(double x, double y, boolean forward){
+		synchronized (lock) {
+			navigating = true;
+			this.forward = forward;
 			targetX = x;
 			targetY = y;
 			targetT = 0.0;
@@ -230,6 +265,19 @@ public class Navigator extends Thread{
 	}
 	
 	/**
+	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
+	 * Minor corrections may be done along the path so that the robot always faces its destination.
+	 * The final orientation of the robot is somewhat random due to those corrections.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param destination The array representing the target destination in the form {x, y}.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void travelTo(double[] destination, boolean forward){
+		travelTo(destination[0], destination[1], forward);
+	}
+	
+	/**
 	 * Sets the target of the navigator, but does not start moving yet.
 	 * Use move() to start the navigator.
 	 * 
@@ -238,6 +286,26 @@ public class Navigator extends Thread{
 	 */
 	public void setTarget(double x, double y){
 		synchronized (lock) {
+			forward = true;
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+	}
+	
+	/**
+	 * Sets the target of the navigator, but does not start moving yet.
+	 * Use move() to start the navigator.
+	 * 
+	 * @param x The x coordinate of the target destination.
+	 * @param y The y coordinate of the target destination.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void setTarget(double x, double y, boolean forward){
+		synchronized (lock) {
+			this.forward = forward;
 			targetX = x;
 			targetY = y;
 			targetT = 0.0;
@@ -254,6 +322,17 @@ public class Navigator extends Thread{
 	 */
 	public void setTarget(double[] destination){
 		setTarget(destination[0], destination[1]);
+	}
+	
+	/**
+	 * Sets the target of the navigator, but does not start moving yet.
+	 * Use move() to start the navigator.
+	 * 
+	 * @param destination The array representing the target destination in the form {x, y}.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void setTarget(double[] destination, boolean forward){
+		setTarget(destination[0], destination[1], forward);
 	}
 	
 	/**

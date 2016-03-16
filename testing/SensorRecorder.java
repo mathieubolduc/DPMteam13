@@ -8,6 +8,9 @@ import finalProject.Filter;
 
 /**
  * The class that records sensor readings in a text file.
+ * 
+ * @version 1.0
+ * @author Mathieu Bolduc
  */
 public class SensorRecorder extends Thread{
 	
@@ -45,7 +48,7 @@ public class SensorRecorder extends Thread{
 				s += " " + f.getFilteredData();
 			}
 			p.println(s);
-
+			
 			end = System.currentTimeMillis();
 			if (end - start < PERIOD) {
 				try {
