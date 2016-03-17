@@ -1,0 +1,1049 @@
+namespace finalProject;
+
+/**
+ * The class responsible for controlling the LCD display.
+ * 
+ * @version 1.0
+ * @author Mathieu Bolduc
+ */
+class Display{
+	
+	// member variables
+    TextLCD t;
+	Object[] objects;
+	const int PERIOD = 250;
+    Object lock;
+	
+	/**
+	 * Constructor for Display
+	 * 
+	 * @param t The TextLCD of the EV3
+	 * @param objects The objects that will be displayed on the screen through the toString() method.
+	 */
+	public Display(TextLCD t, Object[] objects){
+		this.t = t;
+		this.objects = objects;
+		lock = new Object();
+	}
+	
+	// required for thread
+	public void run(){
+		
+		long displayStart, displayEnd;
+		int line;
+		String s;
+		t.clear();
+		
+		while(true){
+			displayStart = System.currentTimeMillis();
+			line = 0;
+			
+			synchronized (lock) {
+				//display all the objects
+				for(Object o : objects){
+					s = o.toString();
+					//parse the string every 16 chars because the display length is 16 chars
+					for(int i=0; i < s.length(); i += 16){
+						t.drawString(s.substring(i, Math.min(s.length(), i+16)), 0, line);
+						line++;
+					}
+				}
+			}
+			
+			//only display once per period
+			displayEnd = System.currentTimeMillis();
+			if (displayEnd - displayStart < PERIOD) {
+				try {
+					Thread.sleep(PERIOD - (displayEnd - displayStart));
+				} catch (InterruptedException e) {
+					// nothing to do here
+				}
+			}
+		}
+		
+	}
+	
+	/**
+	 * Changes the objects that will be displayed on the screen.
+	 * 
+	 * @param objects The objects that will be displayed on the screen through the toString() method.
+	 */
+	public void setObjects(Object[] objects){
+		synchronized(lock){
+			this.objects = objects;
+		}
+	}
+}
+
+
+/**
+ * The class responsible for filtering sensor data.
+ * 
+ * @version 1.0
+ * @author Mathieu
+ *
+ */
+class Filter {
+  
+	Type t;
+	SampleProvider s;
+	float[] samples;
+	int index = 0;
+	Object lock;
+	
+	/**
+	 * The type of filter used. Determines how the filtered data will be calculated from the samples.
+	 */
+	enum Type{
+		/**
+		 * Creates an average filter.
+		 */
+		AVERAGE,
+		
+		/**
+		 * Creates a median filter.
+		 */
+		MEDIAN,
+		
+		/**
+		 * Creates a derivative filter.
+		 */
+		DERIVATIVE,
+		
+		/**
+		 * Creates a filter which copies the sensor value.
+		 */
+		EMPTY
+	}
+	
+	/**
+	 * Constructor for Filter.
+	 * 
+	 * @param t The type of filter used.
+	 * @param s The sensor (and mode) that will be filtered.
+	 * @param window The amount of samples used to calculate the filtered data.
+	 * If the type is DERIVATIVE, the window will be automatically set to 2. If the type is EMPTY, the window will be set to 1.
+	 */
+	public Filter(Type t, SampleProvider s, int window){
+		lock = new Object();
+		this.t= t;
+		this.s = s;
+		if(t == Type.DERIVATIVE)
+			window = 2;
+		if(t == Type.EMPTY)
+			window = 1;
+		samples = new float[window];
+		saturateSamples(0);
+	}
+	
+	/**
+	 * Adds a new sensor reading to the samples.
+	 */
+	public void addSample(){
+		synchronized (lock) {
+			s.fetchSample(samples, index % samples.length);
+			index++;
+		}
+	}
+	
+	/**
+	 * Fills the entire sample array with new readings separated by a time interval.
+	 * 
+	 * @param period The time interval between two readings.
+	 */
+	public void saturateSamples(int period){
+		for(int i=0; i LIGHT_THRESHOLD){
+				angles[i] = odometer.getTheta();
+				Sound.beep();
+				time = System.currentTimeMillis();
+				while(System.currentTimeMillis() - time < COOLDOWN){
+					lightFilter.addSample();
+					try{Thread.sleep(20);}catch(Exception e){}
+				}
+			}
+			else{
+				try{Thread.sleep(50);}catch(Exception e){}
+			}
+		}
+		
+		//set the correct coordinates and angle
+		odometer.setX(-SENSOR_DISTANCE * Math.cos((angles[0] - angles[2]) / 2));
+		odometer.setY(-SENSOR_DISTANCE * Math.cos((angles[1] - angles[3]) / 2));
+		odometer.setTheta(odometer.getTheta() + Math.PI - (angles[0] + angles[2])/2);
+	}
+	
+	public Filter getUsFilter(){
+		return usFilter;
+	}
+	
+	public Filter getlightFilter(){
+		return lightFilter;
+	}
+}
+
+
+
+class Main {
+	
+    //associations 
+    1 -- 1 Odometer odometer;
+    1 -- 1 Navigator navigator;
+    1 -- 1 Display display;
+  
+	//motors and sensors
+	const TextLCD t = LocalEV3.get().getTextLCD();
+	EV3GyroSensor gyroSensor = new EV3GyroSensor(LocalEV3.get().getPort("S2"));
+    EV3LargeRegulatedMotor leftMotor = new
+    EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
+	EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
+	
+	//constants
+	const double TRACK = 17.0, WHEEL_RADIUS = 2.09;
+	
+	
+	
+	public void main(String[] args) {
+		
+		//wait to start
+		Button.waitForAnyPress();
+		
+		//instantiate classes
+		Odometer odometer = new Odometer(leftMotor, rightMotor, null, TRACK, WHEEL_RADIUS);	//the gyro is null if we dont want to use it
+		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
+		Display display = new Display(t, new Object[]{odometer, navigator});	//set the objects we want to display
+		
+		//start the treads
+		Utility.exit.start();
+		odometer.start();
+		navigator.start();
+		display.start();
+		try{Thread.sleep(1000);}catch(Exception e){} // wait a bit for the sensors to stabilize
+		
+		
+		
+		// start the code here
+		
+		
+	}
+
+}
+
+
+
+class Navigator{
+	
+  
+    1 -- 1 Odometer odometer;
+	//member variables
+	EV3LargeRegulatedMotor leftMotor;
+    EV3LargeRegulatedMotor rightMotor;
+	double targetX;
+    double targetY;
+    double targetT;
+    double relativeT;
+	double TOLERANCE = 1.0, ANGLE_TOLERANCE = Math.PI / 64;
+	const int FORWARD_SPEED = 400, ROTATE_SPEED = 200;
+	const double MIN_SPEED_RATIO = 0.2;
+	const int PERIOD = 50;
+	Object lock;
+	boolean navigating;
+	boolean forward;
+	
+	
+	/**
+	 * Constructor for Navigator.
+	 * 
+	 * @param odometer The odometer that the navigator will get its position from. Must have getters for x, y and theta.
+	 * @param leftMotor The left motor.
+	 * @param rightMotor The right motor.
+	 */
+	public Navigator(Odometer odometer, EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor){
+		this.odometer = odometer;
+		this.leftMotor = leftMotor;
+		this.rightMotor = rightMotor;
+		navigating = false;
+		forward = true;
+		targetX = Double.NaN; //targets are set to NaN whenever we do not want to have any target
+		targetY = Double.NaN;
+		targetT = Double.NaN;
+		relativeT = Double.NaN;
+		lock = new Object();
+	}
+	
+	
+	
+	//run method (required for Thread)
+	public void run(){
+		
+		long navigateStart, navigateEnd;
+		double lastTheta = 0;
+		int rotateSpeed, forwardSpeed;
+		
+		while(true){
+			navigateStart = System.currentTimeMillis();
+			
+			synchronized (lock) {
+					
+				//recalculate targetT
+				calculateTargetT();
+				
+				//the navigator should be used only if there is a destination and we are navigating towards it
+				if(navigating){
+					leftMotor.setAcceleration(1500);
+					rightMotor.setAcceleration(1500);
+					
+					if(!Double.isNaN(targetT) || !Double.isNaN(targetX)){
+						//the navigator prioritizes correcting absolute angles, then position, then relative angles.
+						
+						//check if theta is off-course
+						if(!Double.isNaN(targetT) && Utility.angleDiff(odometer.getTheta(), targetT) > ANGLE_TOLERANCE){
+							navigating = true;
+							//correct the angle by turning
+							rotateSpeed = (int) (Math.min(Utility.angleDiff(odometer.getTheta(), targetT) + MIN_SPEED_RATIO, 1) * ROTATE_SPEED);
+							leftMotor.setSpeed(rotateSpeed);
+							rightMotor.setSpeed(rotateSpeed);
+							//calculate the most efficient direction to turn to
+							if(odometer.getTheta() - targetT > 0 && odometer.getTheta() - targetT < Math.PI || odometer.getTheta() - targetT < -Math.PI){
+								//turn right
+								leftMotor.forward();
+								rightMotor.backward();
+							}
+							else{
+								//turn left
+								leftMotor.backward();;
+								rightMotor.forward();;
+							}
+						}
+						//check if the position is off-course
+						else if(!Double.isNaN(targetX) && !Double.isNaN(targetY)  &&  Math.abs(odometer.getX() - targetX) > TOLERANCE || Math.abs(odometer.getY() - targetY) > TOLERANCE){
+							navigating = true;
+							forwardSpeed = (int) (Math.min(Math.sqrt(Math.pow(odometer.getX() - targetX, 2) + Math.pow(odometer.getY() - targetY, 2))/5 + MIN_SPEED_RATIO, 1) * FORWARD_SPEED);
+							leftMotor.setSpeed(forwardSpeed);
+							rightMotor.setSpeed(forwardSpeed);
+							if(forward){
+								leftMotor.forward();
+								rightMotor.forward();
+							}
+							else{
+								leftMotor.backward();
+								rightMotor.backward();
+							}
+						}
+						//nothing to correct: the robot is at its destination
+						else{
+							navigating = false;
+							forward = true;
+							leftMotor.stop(true);
+							rightMotor.stop();
+							targetX = Double.NaN;
+							targetY = Double.NaN;
+							targetT = Double.NaN;
+						}
+					}
+					
+					//theta, x and y are all NaN, so check if relative turning should be used
+					else if(!Double.isNaN(relativeT)){
+						//if the relative angle is small enough, stop turning
+						if(Math.abs(relativeT) < ANGLE_TOLERANCE){
+							relativeT = Double.NaN;
+							navigating = false;
+							leftMotor.stop(true);
+							rightMotor.stop();
+						}
+						//else turn and update the relative angle
+						else{
+							rotateSpeed = (int) (Math.min(Math.abs(relativeT) + MIN_SPEED_RATIO, 1) * ROTATE_SPEED);
+							leftMotor.setSpeed(rotateSpeed);
+							rightMotor.setSpeed(rotateSpeed);
+							if(relativeT > 0){
+								//turn left
+								leftMotor.backward();
+								rightMotor.forward();
+								relativeT -= Utility.angleDiff(odometer.getTheta(), lastTheta);
+							}
+							else{
+								//turn right
+								leftMotor.forward();
+								rightMotor.backward();
+								relativeT += Utility.angleDiff(odometer.getTheta(), lastTheta);
+							}
+						}
+					}
+				}
+			}
+			
+			lastTheta = odometer.getTheta();
+			
+			// this ensures that the navigator only runs once every period
+			navigateEnd = System.currentTimeMillis();
+			if (navigateEnd - navigateStart < PERIOD) {
+				try {
+					Thread.sleep(PERIOD - (navigateEnd - navigateStart));
+				} catch (InterruptedException e) {
+					// nothing to do here
+				}
+			}
+		
+		}
+	}
+	
+	//calculates the angle theta (from the positive X axis) between the robot's current position and its target position
+	private void calculateTargetT(){
+		//only calculate if the position and angle are not NaN and if the robot isnt in the right position
+		if(!Double.isNaN(targetT) && !Double.isNaN(targetX) && !Double.isNaN(targetY)  &&  Math.abs(odometer.getX() - targetX) > TOLERANCE || Math.abs(odometer.getY() - targetY) > TOLERANCE){
+			targetT = Math.atan2(targetY - odometer.getY(), targetX - odometer.getX());
+			if(targetT < 0)
+				targetT += Math.PI * 2;
+			if(!forward)
+				targetT = (targetT + Math.PI) % (Math.PI * 2);
+		}
+	}
+	
+	
+	
+	/**
+	 * Turns the robot to the specified absolute angle theta using the shortest possible way (within ~3 degrees).
+	 * Does not change the position of the robot: it turns on itself.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param theta The absolute angle to turn to. In rads between 0 and 2pi, counterclockwise from the positive x axis.
+	 */
+	public void turnTo(double theta){
+		synchronized (lock) {
+			navigating = true;
+			forward = true;
+			targetT = theta;
+			targetX = Double.NaN;
+			targetY = Double.NaN;
+			relativeT = Double.NaN;
+		}
+	}
+	
+	/**
+	 * Turns by the specified angle relative to the robot's current angle (within ~3 degrees).
+	 * Does not change the position of the robot: it turns on itself.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param theta The angle to turn by. In rads between 0 and 2pi, positive for left, negative for right.
+	 */
+	public void turnBy(double theta){
+		synchronized (lock) {
+			navigating = true;
+			forward = true;
+			targetX = Double.NaN;
+			targetY = Double.NaN;
+			targetT = Double.NaN;
+			relativeT = theta;
+		}
+	}
+	
+	/**
+	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
+	 * Minor corrections may be done along the path so that the robot always faces its destination.
+	 * The final orientation of the robot is somewhat random due to those corrections.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param x The x coordinate of the target destination.
+	 * @param y The y coordinate of the target destination.
+	 */
+	public void travelTo(double x, double y){
+		synchronized (lock) {
+			navigating = true;
+			forward = true;
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+	}
+
+	/**
+	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
+	 * Minor corrections may be done along the path so that the robot always faces its destination.
+	 * The final orientation of the robot is somewhat random due to those corrections.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param x The x coordinate of the target destination.
+	 * @param y The y coordinate of the target destination.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void travelTo(double x, double y, boolean forward){
+		synchronized (lock) {
+			navigating = true;
+			this.forward = forward;
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+	}
+
+	/**
+	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
+	 * Minor corrections may be done along the path so that the robot always faces its destination.
+	 * The final orientation of the robot is somewhat random due to those corrections.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param destination The array representing the target destination in the form {x, y}.
+	 */
+	public void travelTo(double[] destination){
+		travelTo(destination[0], destination[1]);
+	}
+	
+	/**
+	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
+	 * Minor corrections may be done along the path so that the robot always faces its destination.
+	 * The final orientation of the robot is somewhat random due to those corrections.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param destination The array representing the target destination in the form {x, y}.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void travelTo(double[] destination, boolean forward){
+		travelTo(destination[0], destination[1], forward);
+	}
+	
+	/**
+	 * Sets the target of the navigator, but does not start moving yet.
+	 * Use move() to start the navigator.
+	 * 
+	 * @param x The x coordinate of the target destination.
+	 * @param y The y coordinate of the target destination.
+	 */
+	public void setTarget(double x, double y){
+		synchronized (lock) {
+			forward = true;
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+	}
+	
+	/**
+	 * Sets the target of the navigator, but does not start moving yet.
+	 * Use move() to start the navigator.
+	 * 
+	 * @param x The x coordinate of the target destination.
+	 * @param y The y coordinate of the target destination.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void setTarget(double x, double y, boolean forward){
+		synchronized (lock) {
+			this.forward = forward;
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+	}
+	
+	/**
+	 * Sets the target of the navigator, but does not start moving yet.
+	 * Use move() to start the navigator.
+	 * 
+	 * @param destination The array representing the target destination in the form {x, y}.
+	 */
+	public void setTarget(double[] destination){
+		setTarget(destination[0], destination[1]);
+	}
+	
+	/**
+	 * Sets the target of the navigator, but does not start moving yet.
+	 * Use move() to start the navigator.
+	 * 
+	 * @param destination The array representing the target destination in the form {x, y}.
+	 * @param forward True for forward, false for backward.
+	 */
+	public void setTarget(double[] destination, boolean forward){
+		setTarget(destination[0], destination[1], forward);
+	}
+	
+	/**
+	 * Stops the robot dead in its tracks until either move(), travelTo() or turnTo() is called.
+	 * Does not cancel previous target destinations: the robot will keep going to the same destination if the move() method is called.
+	 * The navigator will however keep recalculating targetTheta while it is paused.
+	 */
+	public void pause(){
+		synchronized (lock) {
+			leftMotor.stop(true);
+			rightMotor.stop();
+			navigating = false;
+		}
+	}
+	
+	
+	/**
+	 * Unpauses the navigator if it was previously paused.
+	 * Does nothing if the navigator was not paused.
+	 */
+	public void move(){
+		synchronized (lock) {
+			navigating = true;
+		}
+	}
+	
+	/**
+	 * Returns true if and only if the robot is currently moving via the navigator.
+	 * 
+	 * @return Whether or not the robot is moving.
+	 */
+	public boolean isNavigating(){
+		return navigating;
+	}
+	
+	
+	/**
+	 * Returns the x value of the navigator's current destination.
+	 * A value of NaN means that there is no destination currently.
+	 * 
+	 * @return The x value of the current destination.
+	 */
+	public double getTargetX() {
+		double result;
+		synchronized (lock) {
+			result = targetX;
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the y value of the navigator's current destination.
+	 * A value of NaN means that there is no destination currently.
+	 * 
+	 * @return The y value of the current destination.
+	 */
+	public double getTargetY() {
+		double result;
+		synchronized (lock) {
+			result = targetY;
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the angle that the robot is trying to achieve (the angle between itself and its destination).
+	 * A value of NaN means that there is no destination currently.
+	 * 
+	 * @return The angle between the robot and its destination. In rads between 0 and 2pi, counterclockwise from the positive x axis.
+	 */
+	public double getTargetT() {
+		double result;
+		synchronized (lock) {
+			if(relativeT != Double.NaN){
+				result = relativeT + odometer.getTheta();
+			}
+			else{
+				result = targetT;
+			}
+		}
+		return result;
+	}
+	
+	/**
+	 * Returns a string representation of the navigator's target which fits the EV3's LCD screen.
+	 * 
+	 * @return The navigator's target x and y, in string form.
+	 */
+	public String toString(){
+		return Utility.truncate("Target x: " + targetX, 16) + Utility.truncate("Target y: " + targetY, 16) + Utility.truncate("Diff: " + Utility.angleDiff(targetT, odometer.getTheta()), 16);
+	}
+	
+	/**
+	 * Waits until the navigator stops navigating.
+	 */
+	public void waitForStop(){
+		while(navigating);
+	}
+	
+}
+
+
+
+class ObstacleAvoider{
+	
+  
+    1 -- 1 Navigator navigator;
+    1 -- 1 Odometer odometer;
+    1 -- 1 Filter usFilter;
+  
+	//member variables
+	const double MIN_DISTANCE = 0.3;
+	const int AVOID_DISTANCE = 30;
+	const int PERIOD = 50;
+    boolean isPolling;
+	
+	
+	/**
+	 * Constructor for ObstacleAvoider.
+	 * 
+	 * @param navigator The robot's navigator.
+	 * @param odometer The robot's odometer.
+	 * @param usSensor The US sensor that will detect the walls in front of the robot.
+	 */
+	public ObstacleAvoider(Navigator navigator, Odometer odometer, EV3UltrasonicSensor usSensor){
+		this.navigator = navigator;
+		this.odometer = odometer;
+		this.usFilter = new Filter(Type.MEDIAN, usSensor.getDistanceMode(), 5);
+		this.isPolling = true;
+	}
+	
+	/**
+	 * Makes the robot avoid obstacles while trying to reach the navigator's current target.
+	 * Waits until the navigator reaches its target to terminate.
+	 */
+	public void avoid(){
+		(new Thread(new Runnable(){
+			public void run(){
+				while(isPolling){
+					usFilter.saturateSamples(PERIOD);
+				}
+			}
+		})).start();
+		double distance = 0;
+		while(navigator.isNavigating()){
+			distance = usFilter.getFilteredData();
+			if(distance < MIN_DISTANCE && distance > 0){
+				Sound.beep();
+				double[] destination = new double[]{navigator.getTargetX(), navigator.getTargetY()};
+				navigator.turnBy(Math.PI*2);
+				distance = usFilter.getFilteredData();
+				while(distance < MIN_DISTANCE && distance > 0){
+					try{Thread.sleep(50);}catch(Exception e){}
+				}
+				try{Thread.sleep(100);}catch(Exception e){}
+				navigator.travelTo(odometer.getX() + AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + AVOID_DISTANCE * Math.sin(odometer.getTheta()));
+				navigator.waitForStop();
+				navigator.travelTo(destination);
+			}
+			try{Thread.sleep(50);}catch(Exception e){}
+		}
+		isPolling = false;
+	}
+}
+
+
+
+class Odometer{
+	
+	//member variables
+	double x;
+    double y;
+    double theta;
+	double TRACK;
+    double WHEEL_RADIUS;
+	const int PERIOD = 25;	//the maximum speed the odometer can operate at
+	EV3LargeRegulatedMotor leftMotor;
+	EV3LargeRegulatedMotor rightMotor;
+	EV3GyroSensor gyroSensor;
+	Object lock;
+
+	
+	/**
+	 * Constructor for the odometer.
+	 * 
+	 * @param leftMotor The left motor.
+	 * @param rightMotor The right motor.
+	 * @param gyroSensor The gyro sensor if there is one. If left as null, the angle will be calculated from the motors.
+	 * @param track The distance between the two wheels.
+	 * @param wheelRadius The radius of the wheels.
+	 */
+	public Odometer(EV3LargeRegulatedMotor leftMotor, EV3LargeRegulatedMotor rightMotor, EV3GyroSensor gyroSensor, double track, double wheelRadius) {
+		x = 0.0;
+		y = 0.0;
+		theta = 0.0;
+		lock = new Object();
+		this.leftMotor = leftMotor;
+		this.rightMotor = rightMotor;
+		this.gyroSensor = gyroSensor;
+		this.TRACK = track;
+		this.WHEEL_RADIUS = wheelRadius;
+		if(gyroSensor != null)
+			gyroSensor.reset();
+	}
+
+	
+	// run method (required for Thread)
+	public void run() {
+		//initialize variables
+		long updateStart, updateEnd;
+		int tachoL = 0;
+		int tachoR = 0;
+		int currentTachoL = 0;
+		int currentTachoR = 0;
+		int lastTachoL = 0;
+		int lastTachoR = 0;
+		double distance = 0;
+		double deltaTheta = 0;
+		float[] sample = new float[1];
+
+		while (true) {
+			updateStart = System.currentTimeMillis();
+			
+			//get tacho changes for both motors
+			currentTachoL = leftMotor.getTachoCount();
+			currentTachoR = rightMotor.getTachoCount();
+			tachoL = currentTachoL - lastTachoL;
+			tachoR = currentTachoR - lastTachoR;
+			lastTachoL = currentTachoL;
+			lastTachoR = currentTachoR;
+			
+			
+			synchronized (lock) {
+				
+				//calculate the change in distance
+				distance = (tachoR + tachoL)/360d * Math.PI * WHEEL_RADIUS;
+				
+				//calculate the change in theta. Use the gyro sensor if there is one, else use the tachos
+				if(gyroSensor == null){
+					deltaTheta = (tachoR - tachoL)/(360d * TRACK) * 2 * Math.PI * WHEEL_RADIUS;
+				}
+				else{
+					gyroSensor.getAngleMode().fetchSample(sample, 0);
+					//convert the angle to our notation: between 0 and 2pi, counterclockwise
+					sample[0] %= 360;
+					if(sample[0] < 0){
+						sample[0] = 360 + sample[0];
+					}
+					sample[0] = (float) (Math.PI*(sample[0])/180);
+					deltaTheta = Math.signum(tachoR - tachoL) * Utility.angleDiff(sample[0], theta);
+					//if the gyro sensor is messed up and gives a reading too far off, read the tachos instead
+					if(Math.abs(deltaTheta) > Math.PI/2){
+						deltaTheta = (tachoR - tachoL)/(360d * TRACK) * 2 * Math.PI * WHEEL_RADIUS;
+					}
+					
+				}
+				
+				//update x, y and theta
+				x += distance * Math.cos(theta + deltaTheta/2);
+				y += distance * Math.sin(theta + deltaTheta/2);
+				theta += deltaTheta;
+				
+				//theta must be between 0 and 2pi rads
+				theta %= Math.PI*2;
+				if(theta < 0)
+					theta += 2*Math.PI;
+			}
+			
+			// this ensures that the odometer only runs once every period
+			updateEnd = System.currentTimeMillis();
+			if (updateEnd - updateStart < PERIOD) {
+				try {
+					Thread.sleep(PERIOD - (updateEnd - updateStart));
+				} catch (InterruptedException e) {
+					// nothing to do here
+				}
+			}
+		}
+	}
+	
+	
+	//getters and setters
+	
+	/**
+	 * Sets the x value of the odometer.
+	 * 
+	 * @param x The new x value.
+	 */
+	public void setX(double x) {
+		synchronized (lock) {
+			this.x = x;
+		}
+	}
+
+	/**
+	 * Sets the y value of the odometer.
+	 * 
+	 * @param y The new y value.
+	 */
+	public void setY(double y) {
+		synchronized (lock) {
+			this.y = y;
+		}
+	}
+
+	/**
+	 * Sets the theta value of the odometer. If there is a gyro, the robot MUST be stationary, and theta will be set to 0.
+	 * 
+	 * @param theta The new theta value. Must be in rads between 0 and 2pi.
+	 */
+	public void setTheta(double theta) {
+		synchronized (lock) {
+			//if there is a gyro sensor, reset it
+			if(gyroSensor != null){
+				gyroSensor.reset();
+				theta = 0;
+			}
+			this.theta = theta;
+		}
+	}
+	
+	/**
+	 * Returns the current x value of the odometer.
+	 * 
+	 * @return The current x value of the odometer.
+	 */
+	public double getX() {
+		double result;
+		synchronized (lock) {
+			result = x;
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the current y value of the odometer.
+	 * 
+	 * @return The current y value of the odometer.
+	 */
+	public double getY() {
+		double result;
+		synchronized (lock) {
+			result = y;
+		}
+		return result;
+	}
+
+	/**
+	 * Returns the current theta value of the odometer.
+	 * 
+	 * @return The current angle of the odometer. In rads between 0 and 2pi, starting counterclockwise from the positive x axis.
+	 */
+	public double getTheta() {
+		double result;
+		synchronized (lock) {
+			result = theta;
+		}
+		return result;
+	}
+	
+	/**
+	 * Returns a string representation of the odometer's position which fits the EV3's LCD screen.
+	 * 
+	 * @return The odometer's x, y and theta, in string form.
+	 */
+	public String toString(){
+		return Utility.truncate("x: " + x, 16) + Utility.truncate("y: " + y, 16) + Utility.truncate("t: " + theta, 16);
+		
+	}
+}
+
+
+
+class Utility {
+	
+    abstract;
+	/**
+	 * A Thread that terminates the program when the exit button is pressed.
+	 */
+	Thread exit = new Thread(new Runnable(){
+		public void run(){
+			while(Button.waitForAnyPress() != Button.ID_ESCAPE);
+			System.exit(0);
+		}
+	});
+	
+	/**
+	 * Truncates a string. If the string is too small, pads with spaces.
+	 * 
+	 * @param s The original string.
+	 * @param length The desired length.
+	 * @return The string s truncated to fit the desired length.
+	 */
+	public static String truncate(String s, int length){
+		if(s.length() >= length){
+			s = s.substring(0, length);
+		}
+		else{
+			while(s.length() < length){
+				s += " ";
+			}
+		}
+		return s;
+	}
+	
+	
+	/**
+	 * Calculates the smallest difference between two angles.
+	 * 
+	 * @param a1 The first angle, in rads.
+	 * @param a2 The second angle, in rads.
+	 * @return The smallest difference between a1 and a2.
+	 * For instance, if a1 = pi/4 and a2 = 3pi/2, the result will be 3pi/4.
+	 */
+	public static double angleDiff(double a1, double a2){
+		a1 = a1%(2*Math.PI);
+		a2 = a2%(2*Math.PI);
+		double diff = Math.abs(a1 - a2);
+		return Math.min(diff, 2*Math.PI - diff);
+	}
+	
+	/**
+	 * A class that emulates a Double, but is mutable.
+	 */
+	public static class MutableDouble{
+		
+		/**
+		 * The value of the double.
+		 */
+		public double value;
+		
+		/**
+		 * Constructor for MutableDouble.
+		 * @param value Starting value.
+		 */
+		public MutableDouble(double value){
+			this.value = value;
+		}
+		
+		public String toString(){
+			return "" + value;
+		}
+	}
+	
+}
+//$?[End_of_model]$?
+
+class Display
+{
+  position 50 30 109 45;
+}
+
+class Filter
+{
+  position 50 178 109 45;
+}
+
+class Localizer
+{
+  position 49 345 109 45;
+}
+
+class Main
+{
+  position 200 250 109 45;
+}
+
+class Navigator
+{
+  position 369 175 161 59;
+}
+
+class ObstacleAvoider
+{
+  position 250 30 109 45;
+}
+
+class Odometer
+{
+  position 250 130 109 45;
+}
+
+class Utility
+{
+  position 48 467 109 75;
+}
