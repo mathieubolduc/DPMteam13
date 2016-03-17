@@ -188,6 +188,9 @@ class Main {
     //associations 
     1 -- 1 Odometer odometer;
     1 -- 1 Navigator navigator;
+    1 -- 1 BallLauncher;
+    1 -- 1 BallDetector;
+    1 -- 1 BallRetriever;
     1 -- 1 Display display;
   
 	//motors and sensors
@@ -1006,6 +1009,25 @@ class Utility {
 	}
 	
 }
+
+
+
+
+class BallDetector{
+  
+  1 -- 1 BallRetriever ballRetriever;
+}
+
+class BallRetriever{
+  
+  1 -- 1 BallLauncher ballLauncher;
+  1 -- 1 Navigator ballNavigator;
+}
+
+class BallLauncher{
+  1 -- 1 Navigator ballNavigator;
+}
+
 //$?[End_of_model]$?
 
 class Display
@@ -1046,4 +1068,24 @@ class Odometer
 class Utility
 {
   position 48 467 109 75;
+}
+
+class BallDetector
+{
+  position 250 330 109 45;
+}
+
+class BallRetriever
+{
+  position 250 430 109 45;
+}
+
+class Display
+{
+  position 50 30 109 45;
+}
+
+class BallLauncher
+{
+  position 450 30 109 45;
 }
