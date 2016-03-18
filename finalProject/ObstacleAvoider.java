@@ -11,7 +11,7 @@ public class ObstacleAvoider{
 	Odometer odometer;
 	Filter usFilter;
 	private static final double MIN_DISTANCE = 0.3;
-	private static final int AVOID_DISTANCE = 30;
+	private static final int AVOID_DISTANCE = 20;
 	private static final int PERIOD = 50;
 	private boolean isPolling;
 	
@@ -26,7 +26,7 @@ public class ObstacleAvoider{
 	public ObstacleAvoider(Navigator navigator, Odometer odometer, EV3UltrasonicSensor usSensor){
 		this.navigator = navigator;
 		this.odometer = odometer;
-		this.usFilter = new Filter(Type.MEDIAN, usSensor.getDistanceMode(), 5);
+		this.usFilter = new Filter(Type.EMPTY, usSensor.getDistanceMode(), 1);
 		this.isPolling = true;
 	}
 	
@@ -48,18 +48,25 @@ public class ObstacleAvoider{
 			if(distance < MIN_DISTANCE && distance > 0){
 				Sound.beep();
 				double[] destination = new double[]{navigator.getTargetX(), navigator.getTargetY()};
-				navigator.turnBy(Math.PI*2);
-				distance = usFilter.getFilteredData();
-				while(distance < MIN_DISTANCE && distance > 0){
+				navigator.turnBy(Math.PI);
+				do{
 					try{Thread.sleep(50);}catch(Exception e){}
-				}
-				try{Thread.sleep(100);}catch(Exception e){}
+					distance = usFilter.getFilteredData();
+				}while(distance < MIN_DISTANCE && distance > 0);
+				
+				try{Thread.sleep(500);}catch(Exception e){}
 				navigator.travelTo(odometer.getX() + AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + AVOID_DISTANCE * Math.sin(odometer.getTheta()));
+				navigator.waitForStop();
+				navigator.turnBy(-Math.PI/2);
 				navigator.waitForStop();
 				navigator.travelTo(destination);
 			}
 			try{Thread.sleep(50);}catch(Exception e){}
 		}
 		isPolling = false;
+	}
+	
+	public Filter getFilter(){
+		return usFilter;
 	}
 }
