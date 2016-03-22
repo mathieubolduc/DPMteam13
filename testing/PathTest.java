@@ -7,6 +7,8 @@ import finalProject.ObstacleAvoider;
 import finalProject.Odometer;
 import finalProject.Utility;
 import finalProject.Filter.Type;
+import finalProject.Launcher;
+import finalProject.Launcher.mode;
 import lejos.hardware.Button;
 import lejos.hardware.Sound;
 import lejos.hardware.ev3.LocalEV3;
@@ -21,6 +23,7 @@ public class PathTest {
 	private static final EV3UltrasonicSensor usSensor = new EV3UltrasonicSensor(LocalEV3.get().getPort("S2"));
 	private static final EV3LargeRegulatedMotor leftMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
 	private static final EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
+	private static final EV3LargeRegulatedMotor launcherMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("B"));
 	
 	//constants
 	private static final double TRACK = 15.32, WHEEL_RADIUS = 2.09;
@@ -30,26 +33,34 @@ public class PathTest {
 	public static void main(String[] args) {
 		
 		//wait to start
-		Button.waitForAnyPress();
+		
 		
 		//instantiate classes
 		Odometer odometer = new Odometer(leftMotor, rightMotor, null, TRACK, WHEEL_RADIUS);
 		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
 		ObstacleAvoider obstacleAvoider = new ObstacleAvoider(navigator, odometer, usSensor);
 		Display display = new Display(t, new Object[]{odometer, obstacleAvoider.getFilter()});
+		Launcher launcher = new Launcher(launcherMotor);
 		
-		//start the treads
+		//start the threads
 		Utility.exit.start();
 		odometer.start();
 		navigator.start();
 		display.start();
-		try{Thread.sleep(1000);}catch(Exception e){}
 		
-		
-		navigator.travelTo(60, 60);
-		obstacleAvoider.avoid();
-		navigator.waitForStop();
-		Sound.beep();
+		while(true){
+			Button.waitForAnyPress();
+			launcher.launch(mode.GRAB);
+			try{Thread.sleep(500);}catch(Exception e){}
+			launcher.launch(mode.SHOOT);
+			try{Thread.sleep(500);}catch(Exception e){}
+			launcher.launch(mode.RESET);
+			try{Thread.sleep(500);}catch(Exception e){}
+		}
+//		navigator.travelTo(60, 60);
+//		obstacleAvoider.avoid();
+//		navigator.waitForStop();
+//		Sound.beep();
 		
 		
 		/*
