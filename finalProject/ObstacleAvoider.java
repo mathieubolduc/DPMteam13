@@ -4,6 +4,13 @@ import finalProject.Filter.Type;
 import lejos.hardware.Sound;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
 
+/**
+ * The class responsible for avoiding objects.
+ * 
+ * @author Mathieu Bolduc
+ * @version 1.0
+ *
+ */
 public class ObstacleAvoider{
 	
 	//member variables
@@ -62,9 +69,5 @@ public class ObstacleAvoider{
 			navigator.move();
 		}
 		isPolling = false;
-	}
-	
-	public Filter getFilter(){
-		return usFilter;
 	}
 }
