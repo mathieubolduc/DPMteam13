@@ -10,7 +10,7 @@ public class ObstacleAvoider{
 	Navigator navigator;
 	Odometer odometer;
 	Filter usFilter;
-	private static final double MIN_DISTANCE = 0.3;
+	private static final double MIN_DISTANCE = 0.35;
 	private static final int AVOID_DISTANCE = 20;
 	private static final int PERIOD = 50;
 	private boolean isPolling;
@@ -43,25 +43,23 @@ public class ObstacleAvoider{
 			}
 		})).start();
 		double distance = 0;
+		distance = usFilter.getFilteredData();
 		while(navigator.isNavigating()){
-			distance = usFilter.getFilteredData();
 			if(distance < MIN_DISTANCE && distance > 0){
+				navigator.pause();
 				Sound.beep();
 				double[] destination = new double[]{navigator.getTargetX(), navigator.getTargetY()};
-				navigator.turnBy(Math.PI);
-				do{
-					try{Thread.sleep(50);}catch(Exception e){}
-					distance = usFilter.getFilteredData();
-				}while(distance < MIN_DISTANCE && distance > 0);
-				
-				try{Thread.sleep(500);}catch(Exception e){}
+				navigator.turnBy(Math.PI/2);
+				navigator.waitForStop();
 				navigator.travelTo(odometer.getX() + AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + AVOID_DISTANCE * Math.sin(odometer.getTheta()));
 				navigator.waitForStop();
-				navigator.turnBy(-Math.PI/2);
+				navigator.turnBy(-Math.PI * 0.7);
 				navigator.waitForStop();
-				navigator.travelTo(destination);
+				navigator.setTarget(destination);
 			}
 			try{Thread.sleep(50);}catch(Exception e){}
+			distance = usFilter.getFilteredData();
+			navigator.move();
 		}
 		isPolling = false;
 	}
