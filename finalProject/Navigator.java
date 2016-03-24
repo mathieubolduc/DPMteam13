@@ -20,6 +20,7 @@ public class Navigator extends Thread{
 	private Object lock;
 	private boolean navigating;
 	private boolean forward;
+	private boolean turning;
 	
 	
 	/**
@@ -34,6 +35,7 @@ public class Navigator extends Thread{
 		this.leftMotor = leftMotor;
 		this.rightMotor = rightMotor;
 		navigating = false;
+		turning = false;
 		forward = true;
 		targetX = Double.NaN; //targets are set to NaN whenever we do not want to have any target
 		targetY = Double.NaN;
@@ -70,6 +72,7 @@ public class Navigator extends Thread{
 						//check if theta is off-course
 						if(!Double.isNaN(targetT) && Utility.angleDiff(odometer.getTheta(), targetT) > ANGLE_TOLERANCE){
 							navigating = true;
+							turning = true;
 							//correct the angle by turning
 							rotateSpeed = (int) (Math.min(Utility.angleDiff(odometer.getTheta(), targetT) + MIN_SPEED_RATIO, 1) * ROTATE_SPEED);
 							leftMotor.setSpeed(rotateSpeed);
@@ -89,6 +92,7 @@ public class Navigator extends Thread{
 						//check if the position is off-course
 						else if(!Double.isNaN(targetX) && !Double.isNaN(targetY)  &&  Math.abs(odometer.getX() - targetX) > TOLERANCE || Math.abs(odometer.getY() - targetY) > TOLERANCE){
 							navigating = true;
+							turning = false;
 							forwardSpeed = (int) (Math.min(Math.sqrt(Math.pow(odometer.getX() - targetX, 2) + Math.pow(odometer.getY() - targetY, 2))/5 + MIN_SPEED_RATIO, 1) * FORWARD_SPEED);
 							leftMotor.setSpeed(forwardSpeed);
 							rightMotor.setSpeed(forwardSpeed);
@@ -104,6 +108,7 @@ public class Navigator extends Thread{
 						//nothing to correct: the robot is at its destination
 						else{
 							navigating = false;
+							turning = false;
 							forward = true;
 							leftMotor.stop(true);
 							rightMotor.stop();
@@ -119,11 +124,14 @@ public class Navigator extends Thread{
 						if(Math.abs(relativeT) < ANGLE_TOLERANCE){
 							relativeT = Double.NaN;
 							navigating = false;
+							turning = false;
 							leftMotor.stop(true);
 							rightMotor.stop();
 						}
 						//else turn and update the relative angle
 						else{
+							navigating = true;
+							turning = true;
 							rotateSpeed = (int) (Math.min(Math.abs(relativeT) + MIN_SPEED_RATIO, 1) * ROTATE_SPEED);
 							leftMotor.setSpeed(rotateSpeed);
 							rightMotor.setSpeed(rotateSpeed);
@@ -184,6 +192,7 @@ public class Navigator extends Thread{
 		synchronized (lock) {
 			navigating = true;
 			forward = true;
+			turning = true;
 			targetT = theta;
 			targetX = Double.NaN;
 			targetY = Double.NaN;
@@ -201,6 +210,7 @@ public class Navigator extends Thread{
 	public void turnBy(double theta){
 		synchronized (lock) {
 			navigating = true;
+			turning = true;
 			forward = true;
 			targetX = Double.NaN;
 			targetY = Double.NaN;
@@ -221,6 +231,7 @@ public class Navigator extends Thread{
 	public void travelTo(double x, double y){
 		synchronized (lock) {
 			navigating = true;
+			turning = false;
 			forward = true;
 			targetX = x;
 			targetY = y;
@@ -243,6 +254,7 @@ public class Navigator extends Thread{
 	public void travelTo(double x, double y, boolean forward){
 		synchronized (lock) {
 			navigating = true;
+			turning = false;
 			this.forward = forward;
 			targetX = x;
 			targetY = y;
@@ -345,6 +357,7 @@ public class Navigator extends Thread{
 			leftMotor.stop(true);
 			rightMotor.stop();
 			navigating = false;
+			turning = false;
 		}
 	}
 	
@@ -422,7 +435,7 @@ public class Navigator extends Thread{
 	 * @return The navigator's target x and y, in string form.
 	 */
 	public String toString(){
-		return Utility.truncate("Target x: " + targetX, 16) + Utility.truncate("Target y: " + targetY, 16) + Utility.truncate("Diff: " + Utility.angleDiff(targetT, odometer.getTheta()), 16);
+		return Utility.truncate("Target x: " + targetX, 16) + Utility.truncate("Target y: " + targetY, 16);
 	}
 	
 	/**
@@ -430,6 +443,10 @@ public class Navigator extends Thread{
 	 */
 	public void waitForStop(){
 		while(navigating);
+	}
+	
+	public boolean isTurning(){
+		return turning;
 	}
 	
 }
