@@ -49,8 +49,7 @@ public class ObstacleAvoider{
 				}
 			}
 		})).start();
-		double distance = 0;
-		distance = usFilter.getFilteredData();
+		double distance = usFilter.getFilteredData();
 		while(navigator.isNavigating()){
 			if(distance < MIN_DISTANCE && distance > 0){
 				navigator.pause();
@@ -64,7 +63,7 @@ public class ObstacleAvoider{
 				navigator.waitForStop();
 				navigator.setTarget(destination);
 			}
-			try{Thread.sleep(50);}catch(Exception e){}
+			try{Thread.sleep(PERIOD);}catch(Exception e){}
 			distance = usFilter.getFilteredData();
 			navigator.move();
 		}

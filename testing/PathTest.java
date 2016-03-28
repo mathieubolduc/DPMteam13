@@ -53,11 +53,6 @@ public class PathTest {
 		
 		
 		// start the code here
-		localizer.localize(type.US);
-		//navigator.travelTo(0, 0);
-		//navigator.waitForStop();
-		navigator.turnTo(0);
-		navigator.waitForStop();
 		
 	}
 
