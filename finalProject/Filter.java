@@ -110,10 +110,11 @@ public class Filter {
 				break;
 			
 			case MEDIAN:
-				Arrays.sort(samples);
-				result = samples[samples.length/2];
-				if(samples.length % 2 == 0){
-					result = (result + samples[samples.length/2]) / 2;
+				float[] sorted = Arrays.copyOf(samples, samples.length);
+				Arrays.sort(sorted);
+				result = sorted[sorted.length/2];
+				if(sorted.length % 2 == 0){
+					result = (result + sorted[sorted.length/2]) / 2;
 				}
 				break;
 				
