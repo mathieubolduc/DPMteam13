@@ -20,7 +20,7 @@ public class PathTest {
 	//motors and sensors
 	private static final TextLCD t = LocalEV3.get().getTextLCD();
 	private static final EV3ColorSensor leftSensor = new EV3ColorSensor(LocalEV3.get().getPort("S1"));
-	private static final EV3ColorSensor rightSensor = new EV3ColorSensor(LocalEV3.get().getPort("S4"));
+//	private static final EV3ColorSensor rightSensor = new EV3ColorSensor(LocalEV3.get().getPort("S4"));
 	private static final EV3UltrasonicSensor usSensor = new EV3UltrasonicSensor(LocalEV3.get().getPort("S2"));
 	private static final EV3LargeRegulatedMotor leftMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
 	private static final EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
@@ -40,7 +40,7 @@ public class PathTest {
 		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
 		//OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, leftSensor, rightSensor, SENSOR_DIST_TANGENT, SENSOR_DIST_NORMAL);
 		Display display = new Display(t, new Object[]{odometer});	//set the objects we want to display
-		Localizer localizer = new Localizer(navigator, odometer, usSensor, null, 0);
+		Localizer localizer = new Localizer(navigator, odometer, usSensor, leftSensor, 12);
 		
 		//start the treads
 		Utility.exit.start();
@@ -49,6 +49,12 @@ public class PathTest {
 		//odometryCorrection.start();
 		display.start();
 		try{Thread.sleep(1000);}catch(Exception e){} // wait a bit for the sensors to stabilize
+		//test US localizer
+		Button.waitForAnyPress();
+		localizer.localize(type.US);
+		//test Light localizer
+		Button.waitForAnyPress();
+		localizer.localize(type.LIGHT);
 		
 		
 		
