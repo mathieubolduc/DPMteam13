@@ -1,10 +1,13 @@
 package finalProject;
 
+import java.io.IOException;
+import java.util.HashMap;
 import lejos.hardware.Button;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.lcd.TextLCD;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.sensor.EV3GyroSensor;
+import wifi.WifiConnection;
 
 public class Main {
 	
@@ -17,9 +20,35 @@ public class Main {
 	//constants
 	private static final double TRACK = 17.0, WHEEL_RADIUS = 2.09;
 	
-	
+	//Wifi Parameters
+	private static final String SERVER_IP = "192.168.0.101";//default "localhost", enter IP of server computer
+	private static final int TEAM_NUMBER = 13;
 	
 	public static void main(String[] args) {
+		
+		//Instantiate WifiConnection object
+		WifiConnection conn = null;
+		try {
+			conn = new WifiConnection(SERVER_IP, TEAM_NUMBER);
+		} catch (IOException e){
+			t.drawString("Connection Failed", 0, 8);
+		}
+		
+		t.clear();
+		
+		//data is a HashMap with string elements and integer keys
+		//it contains all initial parameters to be used
+		if (conn != null){
+			HashMap<String,Integer> data = conn.StartData;
+			if (t == null) {
+				t.drawString("Failed to read transmission", 0, 5);
+			} else {
+				t.drawString("Transmission read", 0, 5);
+				t.drawString(t.toString(), 0, 6);
+			}
+		} else {
+			t.drawString("Connection failed", 0, 5);
+		}
 		
 		//wait to start
 		Button.waitForAnyPress();
