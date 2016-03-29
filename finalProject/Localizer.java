@@ -19,7 +19,7 @@ public class Localizer {
 	private final double SENSOR_DISTANCE;
 	private Navigator navigator;
 	private Odometer odometer;
-	private final static double LIGHT_THRESHOLD = 0.06, US_THRESHOLD = 0.4, CORRECTION = 0;
+	private final static double LIGHT_THRESHOLD = 0.06, US_THRESHOLD = 0.4, US_CORRECTION = 0, LIGHT_CORRECTION = 0.2;
 	private final static int COOLDOWN = 300;
 	
 	/**
@@ -48,20 +48,19 @@ public class Localizer {
 	public void localize(type t){
 		switch(t){
 			case LIGHT:
-				this.lightLocalization();
+				lightLocalization();
 				break;
 			case US:
-				this.usLocalization();
+				usLocalization();
 				break;
 			case US_AND_LIGHT:
-				this.usLocalization();
+				usLocalization();
 				Sound.beep();
 				navigator.travelTo(25, 25);
 				navigator.turnTo(Math.PI/4);
-				this.lightLocalization();
+				lightLocalization();
 				break;
 		}
-		Sound.beep();
 	}
 	
 	public enum type{
@@ -85,9 +84,9 @@ public class Localizer {
 	private void usLocalization(){
 		
 		//find the angle
-		Filter usFilter = new Filter(Type.EMPTY, usSensor.getDistanceMode(), 1);
+		Filter usFilter = new Filter(Type.AVERAGE, usSensor.getDistanceMode(), 5);
 		double[] angles = new double[2];
-		usFilter.saturateSamples(20);
+		usFilter.saturateSamples(10);
 		navigator.turnBy(Math.PI*2);
 		
 		//get the 1st angle
@@ -97,6 +96,7 @@ public class Localizer {
 			try{Thread.sleep(20);}catch(Exception e){}
 		}
 		try{Thread.sleep(COOLDOWN);}catch(Exception e){}
+		usFilter.saturateSamples(10);
 		//rotate until you see a wall
 		while(usFilter.getFilteredData() > US_THRESHOLD){
 			usFilter.addSample();
@@ -106,6 +106,7 @@ public class Localizer {
 		angles[0] = odometer.getTheta();
 		Sound.beep();
 		try{Thread.sleep(COOLDOWN);}catch(Exception e){}
+		usFilter.saturateSamples(10);
 		
 		navigator.turnBy(-Math.PI*2);
 		
@@ -116,6 +117,7 @@ public class Localizer {
 			try{Thread.sleep(20);}catch(Exception e){}
 		}
 		try{Thread.sleep(COOLDOWN);}catch(Exception e){}
+		usFilter.saturateSamples(10);
 		//rotate until you see a wall
 		while(usFilter.getFilteredData() > US_THRESHOLD){
 			usFilter.addSample();
@@ -125,27 +127,27 @@ public class Localizer {
 		angles[1] = odometer.getTheta();
 		Sound.beep();
 		
-		odometer.setTheta((angles[0] < angles[1] ? 225d/180*Math.PI : 45d/180*Math.PI) -(angles[0] + angles[1]) / 2 + odometer.getTheta() + CORRECTION);
+		odometer.setTheta((angles[0] < angles[1] ? 225d/180*Math.PI : 45d/180*Math.PI) -(angles[0] + angles[1]) / 2 + odometer.getTheta() + US_CORRECTION);
 		
 		//find the Y
 		navigator.turnTo(Math.PI*3/2);
 		navigator.waitForStop();
 		Sound.beep();
 		usFilter.saturateSamples(20);
-		odometer.setY(100*usFilter.getFilteredData()-30);
+		odometer.setY(100*usFilter.getFilteredData()-25);
 		
 		//find the X
 		navigator.turnTo(Math.PI);
 		navigator.waitForStop();
 		Sound.beep();
 		usFilter.saturateSamples(20);
-		odometer.setX(100*usFilter.getFilteredData()-30);
+		odometer.setX(100*usFilter.getFilteredData()-25);
 		
 	}
 	
 	//performs a localization using the light sensor by turning 360 deg and detecting 4 lines.
 	private void lightLocalization(){
-		Filter lightFilter = new Filter(Type.DERIVATIVE, colorSensor.getRedMode(), 5);
+		Filter lightFilter = new Filter(Type.DERIVATIVE, colorSensor.getRedMode(), 2);
 		double[] angles = new double[4];
 		int i=0;
 		long time;
@@ -167,10 +169,10 @@ public class Localizer {
 				try{Thread.sleep(50);}catch(Exception e){}
 			}
 		}
-		
+		try{Thread.sleep(COOLDOWN);}catch(Exception e){}
 		//set the correct coordinates and angle
 		odometer.setX(-SENSOR_DISTANCE * Math.cos((angles[0] - angles[2]) / 2));
 		odometer.setY(-SENSOR_DISTANCE * Math.cos((angles[1] - angles[3]) / 2));
-		odometer.setTheta(odometer.getTheta() + Math.PI - (angles[0] + angles[2])/2);
+		odometer.setTheta(odometer.getTheta() + Math.PI - (angles[0] + angles[2])/2 + LIGHT_CORRECTION);
 	}
 }
