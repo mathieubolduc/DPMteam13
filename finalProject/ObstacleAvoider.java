@@ -14,11 +14,11 @@ import lejos.hardware.sensor.EV3UltrasonicSensor;
 public class ObstacleAvoider{
 	
 	//member variables
-	Navigator navigator;
-	Odometer odometer;
-	Filter usFilter;
+	private Navigator navigator;
+	private Odometer odometer;
+	private Filter usFilter;
 	private static final double MIN_DISTANCE = 0.35;
-	private static final int AVOID_DISTANCE = 20;
+	private static final int AVOID_DISTANCE = 30;
 	private static final int PERIOD = 50;
 	private boolean isPolling;
 	
@@ -33,15 +33,17 @@ public class ObstacleAvoider{
 	public ObstacleAvoider(Navigator navigator, Odometer odometer, EV3UltrasonicSensor usSensor){
 		this.navigator = navigator;
 		this.odometer = odometer;
-		this.usFilter = new Filter(Type.EMPTY, usSensor.getDistanceMode(), 1);
+		this.usFilter = new Filter(Type.AVERAGE, usSensor.getDistanceMode(), 5);
 		this.isPolling = true;
 	}
 	
 	/**
 	 * Makes the robot avoid obstacles while trying to reach the navigator's current target.
 	 * Waits until the navigator reaches its target to terminate.
+	 * 
+	 * @param direction The direction the robot will turn to when it sees a wall. True for left, false for right.
 	 */
-	public void avoid(){
+	public void avoid(boolean direction){
 		(new Thread(new Runnable(){
 			public void run(){
 				while(isPolling){
@@ -50,16 +52,17 @@ public class ObstacleAvoider{
 			}
 		})).start();
 		double distance = usFilter.getFilteredData();
+		int sign = direction ? 1 : -1;
 		while(navigator.isNavigating()){
-			if(distance < MIN_DISTANCE && distance > 0){
+			if(distance < MIN_DISTANCE && distance > 0 && !navigator.isTurning()){
 				navigator.pause();
 				Sound.beep();
 				double[] destination = new double[]{navigator.getTargetX(), navigator.getTargetY()};
-				navigator.turnBy(Math.PI/2);
+				navigator.turnBy(Math.PI/2 * sign);
 				navigator.waitForStop();
 				navigator.travelTo(odometer.getX() + AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + AVOID_DISTANCE * Math.sin(odometer.getTheta()));
 				navigator.waitForStop();
-				navigator.turnBy(-Math.PI * 0.7);
+				navigator.turnBy(Math.PI * 0.6 * -sign);
 				navigator.waitForStop();
 				navigator.setTarget(destination);
 			}

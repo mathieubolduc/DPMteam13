@@ -10,9 +10,7 @@ import lejos.hardware.motor.EV3LargeRegulatedMotor;
 public class Launcher{
 	
 	//member variables
-	private Odometer odometer;
 	private EV3LargeRegulatedMotor launchMotor;
-	private double launchAcceleration = 2000; //the speed that the launchMotor operates at
 	private Object lock;
 	
 	
@@ -23,6 +21,7 @@ public class Launcher{
 	 */
 	public Launcher(EV3LargeRegulatedMotor launchMotor){
 		this.launchMotor = launchMotor;
+		launchMotor.resetTachoCount();
 		lock = new Object();
 	}
 	
@@ -55,12 +54,10 @@ public class Launcher{
 				launchMotor.rotate(-420);
 				break;
 			case SHOOT:
-				launchMotor.rotate(-120); 
+				launchMotor.rotate(-180); 
 				break;
 			case RESET:
-				launchMotor.rotateTo(-40);
-				launchMotor.flt();
-				try{Thread.sleep(500);}catch(Exception e){}
+				launchMotor.rotateTo(0);
 				launchMotor.stop();
 			}
 		}

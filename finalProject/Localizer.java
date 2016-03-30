@@ -19,7 +19,7 @@ public class Localizer {
 	private final double SENSOR_DISTANCE;
 	private Navigator navigator;
 	private Odometer odometer;
-	private final static double LIGHT_THRESHOLD = 0.6, US_THRESHOLD = 0.4, CORRECTION = 0, NOISE_MARGIN = 0.04;
+	private final static double LIGHT_THRESHOLD = 0.6, US_THRESHOLD = 0.4, CORRECTION = 0.1, NOISE_MARGIN = 0.04;
 	private boolean recorded1 = false, recorded2 = true;
 	private double theta1, theta2, thetaResult;
 	private final static int COOLDOWN = 300;
@@ -63,7 +63,6 @@ public class Localizer {
 				this.lightLocalization();
 				break;
 		}
-		Sound.beep();
 	}
 	
 	public enum type{
@@ -87,7 +86,7 @@ public class Localizer {
 	private void usLocalization(){
 		
 		//find the angle
-		Filter usFilter = new Filter(Type.EMPTY, usSensor.getDistanceMode(), 1);
+		Filter usFilter = new Filter(Type.AVERAGE, usSensor.getDistanceMode(), 5);
 		double[] angles = new double[2];
 		usFilter.saturateSamples(20);
 		navigator.turnBy(Math.PI*2);
@@ -130,6 +129,8 @@ public class Localizer {
 		Sound.beep();
 
 		navigator.turnBy(-Math.PI*2);
+		try{Thread.sleep(COOLDOWN);}catch(Exception e){}
+		usFilter.saturateSamples(10);
 		
 		//get the 2nd angle
 		
@@ -180,14 +181,14 @@ public class Localizer {
 		navigator.waitForStop();
 		Sound.beep();
 		usFilter.saturateSamples(20);
-		odometer.setY(100*usFilter.getFilteredData()-30);
+		odometer.setY(100*usFilter.getFilteredData()-25);
 		
 		//find the X
 		navigator.turnTo(Math.PI);
 		navigator.waitForStop();
 		Sound.beep();
 		usFilter.saturateSamples(20);
-		odometer.setX(100*usFilter.getFilteredData()-30);
+		odometer.setX(100*usFilter.getFilteredData()-25);
 		
 	}
 	

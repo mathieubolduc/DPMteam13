@@ -220,6 +220,25 @@ public class Navigator extends Thread{
 	}
 	
 	/**
+	 * Turns by towards the specified coordinates (within ~3 degrees).
+	 * Does not change the position of the robot: it turns on itself.
+	 * Cancels any previous move commands.
+	 * 
+	 * @param x The x coordinate of the point the robot should face.
+	 * @param y The y coordinate of the point the robot should face.
+	 */
+	public void turnToward(double x, double y){
+		synchronized (lock) {
+			targetX = x;
+			targetY = y;
+			targetT = 0.0;
+			relativeT = Double.NaN;
+			calculateTargetT();
+		}
+		turnTo(targetT);
+	}
+	
+	/**
 	 * Moves the robot to the specified coordinates in a straight line (within ~1cm).
 	 * Minor corrections may be done along the path so that the robot always faces its destination.
 	 * The final orientation of the robot is somewhat random due to those corrections.
@@ -368,7 +387,8 @@ public class Navigator extends Thread{
 	 */
 	public void move(){
 		synchronized (lock) {
-			navigating = true;
+			if(!Double.isNaN(targetT) || !Double.isNaN(targetX) || !Double.isNaN(relativeT))
+				navigating = true;
 		}
 	}
 	
