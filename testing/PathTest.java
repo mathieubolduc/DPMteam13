@@ -1,7 +1,11 @@
 package testing;
 
+import java.io.IOException;
+
 import finalProject.Aegis;
 import finalProject.Display;
+import finalProject.Launcher;
+import finalProject.Launcher.mode;
 import finalProject.Localizer;
 import finalProject.Localizer.type;
 import finalProject.Navigator;
@@ -16,6 +20,7 @@ import lejos.hardware.lcd.TextLCD;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
+import wifi.WifiConnection;
 
 public class PathTest {
 	
@@ -29,11 +34,12 @@ public class PathTest {
 	private static final EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
 	
 	//constants
-	private static final double TRACK = 15.9, WHEEL_RADIUS = 2.08, SENSOR_DIST_TANGENT = 15, SENSOR_DIST_NORMAL = 5;
+	private static final double TRACK = 15.9, WHEEL_RADIUS = 2.08, SENSOR_DIST_TANGENT = 15, SQUARE_LENGTH = 30.67;
+	private static final String SERVER_IP = "142.157.179.36";
+	private static final int TEAM_NUMBER = 13;
 	
 	
-	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException{
 		
 		//wait to start
 		Button.waitForAnyPress();
@@ -42,10 +48,13 @@ public class PathTest {
 		Odometer odometer = new Odometer(leftMotor, rightMotor, null, TRACK, WHEEL_RADIUS);	//the gyro is null if we dont want to use it
 		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
 		ObstacleAvoider obstacleAvoider = new ObstacleAvoider(navigator, odometer, usSensor);
-		OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, colorSensor, null, SENSOR_DIST_TANGENT, SENSOR_DIST_NORMAL);
-		Display display = new Display(t, new Object[]{odometer, odometryCorrection});	//set the objects we want to display
-		Localizer localizer = new Localizer(navigator, odometer, usSensor, colorSensor, 0);
+		Localizer localizer = new Localizer(navigator, odometer, usSensor, colorSensor, SENSOR_DIST_TANGENT);
+		OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, colorSensor, null, SENSOR_DIST_TANGENT, 0);
+		Launcher launcher = new Launcher(launchMotor);
 		Aegis aegis = new Aegis(flapsMotor);
+		Display display = new Display(t, new Object[]{odometer, navigator});	//set the objects we want to display
+		//WifiConnection wifiConnection = new WifiConnection(SERVER_IP, TEAM_NUMBER);
+		
 		
 		//start the treads
 		Utility.exit.start();
@@ -54,13 +63,22 @@ public class PathTest {
 		display.start();
 		try{Thread.sleep(1000);}catch(Exception e){} // wait a bit for the sensors to stabilize
 		
-		
+		//get wifi stuff
+		int llx = 90;			//wifiConnection.StartData.get("ll-x");
+		int lly = 90;			//wifiConnection.StartData.get("ll-y");
+		int urx = 100;			//wifiConnection.StartData.get("ur-x");
+		int ury = 120;			//wifiConnection.StartData.get("ur-y");
+		int sc = 1;				//wifiConnection.StartData.get("sc");
 		
 		// start the code here
+		
+		//localise
 		localizer.localize(type.US);
-		navigator.travelTo(60, 60);
-		while(navigator.isTurning());
-		obstacleAvoider.avoid(true);
+		
+		//start the odometry correction (must be started after the localization is done)
+		//odometryCorrection.start();
+		
+		//do stuff
 		navigator.turnTo(0);
 		navigator.waitForStop();
 	}
