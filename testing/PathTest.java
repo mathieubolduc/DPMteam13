@@ -72,13 +72,15 @@ public class PathTest {
 		
 		// start the code here
 		
-		//localise
+		//localize
 		localizer.localize(type.US);
 		
 		//start the odometry correction (must be started after the localization is done)
 		//odometryCorrection.start();
 		
 		//do stuff
+		navigator.travelTo(0, 0);
+		navigator.waitForStop();
 		navigator.turnTo(0);
 		navigator.waitForStop();
 	}
