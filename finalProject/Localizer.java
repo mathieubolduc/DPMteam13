@@ -107,7 +107,6 @@ public class Localizer {
 		Sound.beep();
 		try{Thread.sleep(COOLDOWN);}catch(Exception e){}
 		usFilter.saturateSamples(10);
-		
 		navigator.turnBy(-Math.PI*2);
 		
 		//get the 2nd angle
@@ -155,9 +154,11 @@ public class Localizer {
 		navigator.turnBy(Math.PI*2);
 		while(navigator.isNavigating()){
 			lightFilter.addSample();
-			//if there is a line, record the angle
+			//if there is a line
 			if(Math.abs(lightFilter.getFilteredData()) > LIGHT_THRESHOLD){
+//				navigator.pause();
 				angles[i] = odometer.getTheta();
+				i++;
 				Sound.beep();
 				time = System.currentTimeMillis();
 				while(System.currentTimeMillis() - time < COOLDOWN){

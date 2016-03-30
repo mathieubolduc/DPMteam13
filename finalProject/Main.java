@@ -59,7 +59,7 @@ public class Main {
 		int lly = 90;			//wifiConnection.StartData.get("ll-y");
 		int urx = 100;			//wifiConnection.StartData.get("ur-x");
 		int ury = 120;			//wifiConnection.StartData.get("ur-y");
-		int sc = 1;				//wifiConnection.StartData.get("sc");
+		int sc = 2;				//wifiConnection.StartData.get("sc");
 		
 		// start the code here
 		

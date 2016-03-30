@@ -11,7 +11,6 @@ public class Launcher{
 	
 	//member variables
 	private EV3LargeRegulatedMotor launchMotor;
-	private double launchAcceleration = 2000; //the speed that the launchMotor operates at
 	private Object lock;
 	
 	
