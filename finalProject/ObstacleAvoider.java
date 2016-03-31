@@ -16,10 +16,10 @@ public class ObstacleAvoider{
 	//member variables
 	private Navigator navigator;
 	private Odometer odometer;
-	private Filter usFilter;
-	private static final double MIN_DISTANCE = 0.35;
+	public Filter usFilter;
+	private static final double MIN_DISTANCE = 0.3;
 	private static final int AVOID_DISTANCE = 30;
-	private static final int PERIOD = 50;
+	private static final int PERIOD = 10;
 	private boolean isPolling;
 	
 	
@@ -53,6 +53,7 @@ public class ObstacleAvoider{
 		})).start();
 		double distance = usFilter.getFilteredData();
 		int sign = direction ? 1 : -1;
+		usFilter.saturateSamples(0);
 		while(navigator.isNavigating()){
 			if(distance < MIN_DISTANCE && distance > 0 && !navigator.isTurning()){
 				navigator.pause();
