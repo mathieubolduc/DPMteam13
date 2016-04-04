@@ -19,9 +19,9 @@ public class Localizer {
 	private final double SENSOR_DISTANCE;
 	private Navigator navigator;
 	private Odometer odometer;
-	private final static double LIGHT_THRESHOLD = 0.6, US_THRESHOLD = 0.4, CORRECTION = 0.1, NOISE_MARGIN = 0.04;
+	private final static double LIGHT_THRESHOLD = 0.2, US_THRESHOLD = 0.4, US_CORRECTION = 0.1, LIGHT_CORRECTION = 0.05, NOISE_MARGIN = 0.04, SQUARE_LENGTH = 30.67;
 	private boolean recorded1 = false, recorded2 = true;
-	private double theta1, theta2, thetaResult;
+	private double theta1, theta2;
 	private final static int COOLDOWN = 300;
 	
 	/**
@@ -174,7 +174,7 @@ public class Localizer {
 		
 		Sound.beep();
 		
-		odometer.setTheta((angles[0] < angles[1] ? 225d/180*Math.PI : 45d/180*Math.PI) -(angles[0] + angles[1]) / 2 + odometer.getTheta() + CORRECTION);
+		odometer.setTheta((angles[0] < angles[1] ? 225d/180*Math.PI : 45d/180*Math.PI) -(angles[0] + angles[1]) / 2 + odometer.getTheta() + US_CORRECTION);
 		
 		//find the Y
 		navigator.turnTo(Math.PI*3/2);
@@ -194,7 +194,7 @@ public class Localizer {
 	
 	//performs a localization using the light sensor by turning 360 deg and detecting 4 lines.
 	private void lightLocalization(){
-		Filter lightFilter = new Filter(Type.DERIVATIVE, colorSensor.getRedMode(), 5);
+		Filter lightFilter = new Filter(Type.DERIVATIVE, colorSensor.getRedMode(), 2);
 		double[] angles = new double[4];
 		int i=0;
 		long time;
@@ -204,7 +204,6 @@ public class Localizer {
 			lightFilter.addSample();
 			//if there is a line
 			if(Math.abs(lightFilter.getFilteredData()) > LIGHT_THRESHOLD){
-//				navigator.pause();
 				angles[i] = odometer.getTheta();
 				i++;
 				Sound.beep();
@@ -215,13 +214,25 @@ public class Localizer {
 				}
 			}
 			else{
-				try{Thread.sleep(50);}catch(Exception e){}
+				try{Thread.sleep(20);}catch(Exception e){}
 			}
 		}
 		
+		//if you didnt see all 4 lines
+		if(i != 4){
+			Sound.buzz();
+			return;
+		}
+		
 		//set the correct coordinates and angle
-		odometer.setX(-SENSOR_DISTANCE * Math.cos((angles[0] - angles[2]) / 2));
-		odometer.setY(-SENSOR_DISTANCE * Math.cos((angles[1] - angles[3]) / 2));
-		odometer.setTheta(odometer.getTheta() + Math.PI - (angles[0] + angles[2])/2);
+		int quadrant = (int) (odometer.getTheta() / (Math.PI/2));
+		//the corrections are for quadrant 0. For other quadrants just shift the angle index by the quadrant (mod 4)
+		double corrX = -SENSOR_DISTANCE * Math.cos((angles[(0+quadrant)%4] - angles[(2+quadrant)%4]) / 2);
+		double corrY = (quadrant < 2 ? -1 : 1) * SENSOR_DISTANCE * Math.cos((angles[(1+quadrant)%4] - angles[(3+quadrant)%4]) / 2);
+		double corrT = Math.PI - (angles[(0+quadrant)%4] + angles[(2+quadrant)%4])/2;
+		
+		odometer.setX(corrX + Math.round(odometer.getX() / SQUARE_LENGTH) * SQUARE_LENGTH);
+		odometer.setY(corrY + Math.round(odometer.getY() / SQUARE_LENGTH) * SQUARE_LENGTH);
+		odometer.setTheta(corrT + odometer.getTheta() + LIGHT_CORRECTION);
 	}
 }

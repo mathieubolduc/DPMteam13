@@ -70,9 +70,9 @@ public class Main {
 		//odometryCorrection.start();
 		
 		//do stuff
-		navigator.travelTo(llx+10, lly - 30);
+		navigator.travelTo(llx+10, lly - 40);
 		obstacleAvoider.avoid(false);
-		navigator.travelTo(llx+10, lly);
+		navigator.travelTo(llx+10, lly-10);
 		navigator.waitForStop();
 		navigator.turnTo(Math.PI/2);
 		navigator.waitForStop();
