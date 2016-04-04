@@ -198,6 +198,12 @@ public class Localizer {
 		double[] angles = new double[4];
 		int i=0;
 		long time;
+		int quadrant = (int) (odometer.getTheta() / (Math.PI/2));
+		
+		//turn the the closest 45deg to make sure you dont start near a line
+		navigator.turnTo(quadrant*(Math.PI/2) + Math.PI/4);
+		navigator.waitForStop();
+		
 		//turn 360 deg to hopefully go over 4 lines
 		navigator.turnBy(Math.PI*2);
 		while(navigator.isNavigating()){
@@ -225,7 +231,6 @@ public class Localizer {
 		}
 		
 		//set the correct coordinates and angle
-		int quadrant = (int) (odometer.getTheta() / (Math.PI/2));
 		//the corrections are for quadrant 0. For other quadrants just shift the angle index by the quadrant (mod 4)
 		double corrX = -SENSOR_DISTANCE * Math.cos((angles[(0+quadrant)%4] - angles[(2+quadrant)%4]) / 2);
 		double corrY = (quadrant < 2 ? -1 : 1) * SENSOR_DISTANCE * Math.cos((angles[(1+quadrant)%4] - angles[(3+quadrant)%4]) / 2);

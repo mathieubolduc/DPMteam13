@@ -81,23 +81,44 @@ public class PathTest2 {
 		
 		//do stuff
 		/*
-		odometer.setTheta(Math.PI/4 + Math.PI/2*3);
-		try{Thread.sleep(1000);}catch(Exception e){}
+		navigator.travelTo(60, 60);
+		double[][] checkPoints = obstacleAvoider.avoid(true);
 		localizer.localize(type.LIGHT);
-		navigator.travelTo(0, 0);
+		navigator.travelTo(60, 60);
 		navigator.waitForStop();
 		navigator.turnTo(0);
 		navigator.waitForStop();
-		*/
-		navigator.travelTo(90, 90);
-		double[][] checkPoints = obstacleAvoider.avoid(true);
-		Utility.reverse(checkPoints);
+		Sound.beep();
 		Button.waitForAnyPress();
+		Utility.reverse(checkPoints);
 		for(double[] checkPoint : checkPoints){
 			navigator.travelTo(checkPoint);
 			navigator.waitForStop();
 		}
 		navigator.travelTo(0, 0);
+		navigator.waitForStop();
+		localizer.localize(type.LIGHT);
+		navigator.travelTo(0, 0);
+		navigator.waitForStop();
+		navigator.turnTo(0);
+		navigator.waitForStop();
+		Sound.beep();
+		*/
+		long time = System.currentTimeMillis() + 60*1000*2;
+		while(System.currentTimeMillis() < time){
+			navigator.travelTo(Math.random()*60, Math.random()*60);
+			navigator.waitForStop();
+		}
+		navigator.travelTo(0, 0);
+		navigator.waitForStop();
+		navigator.turnTo(0);
+		navigator.waitForStop();
+		Sound.beep();
+		Button.waitForAnyPress();
+		localizer.localize(type.LIGHT);
+		navigator.travelTo(0, 0);
+		navigator.waitForStop();
+		navigator.turnTo(0);
 		navigator.waitForStop();
 	}
 

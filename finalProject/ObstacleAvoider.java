@@ -73,7 +73,7 @@ public class ObstacleAvoider{
 				navigator.waitForStop();
 				navigator.turnBy(-Math.PI/2 * sign);
 				navigator.waitForStop();
-				navigator.travelTo(odometer.getX() + AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + AVOID_DISTANCE * Math.sin(odometer.getTheta()));
+				navigator.travelTo(odometer.getX() + 1.5*AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + 1.5*AVOID_DISTANCE * Math.sin(odometer.getTheta()));
 				checkPoints.add(new double[]{navigator.getTargetX(), navigator.getTargetY()});
 				navigator.waitForStop();
 				navigator.setTarget(destination);
