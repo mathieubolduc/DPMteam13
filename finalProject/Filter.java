@@ -17,6 +17,7 @@ public class Filter {
 	private final SampleProvider s;
 	private float[] samples;
 	private int index;
+	private int window;
 	private Object lock;
 	
 	/**
@@ -41,7 +42,22 @@ public class Filter {
 		/**
 		 * Creates a filter which copies the sensor value.
 		 */
-		EMPTY
+		EMPTY,
+		
+		/**
+		 * Creates a filter for red RGB value.
+		 */
+		RED,
+		
+		/**
+		 * Creates a filter for green RGB value.
+		 */
+		GREEN,
+		
+		/**
+		 * Creates a filter for blue RGB value.
+		 */
+		BLUE
 	}
 	
 	/**
@@ -56,12 +72,21 @@ public class Filter {
 		lock = new Object();
 		this.t= t;
 		this.s = s;
+		this.window = window;
 		if(t == Type.DERIVATIVE)
-			window = 2;
+			this.window = 2;
 		if(t == Type.EMPTY)
-			window = 1;
-		samples = new float[window];
-		saturateSamples(0);
+			this.window = 1;
+		//if RGB mode, use saturateRGBsample
+		if(t == Type.RED || t == Type.GREEN || t == Type.BLUE){
+			samples = new float[this.window*3];
+			saturateSamples(0,true);
+		} else {
+		//if other mode, use saturateSample
+			samples = new float[this.window];
+			saturateSamples(0,false);
+		}
+		
 	}
 	
 	/**
@@ -75,12 +100,38 @@ public class Filter {
 	}
 	
 	/**
+	 * Adds 3 new RGB sensor readings to the samples.
+	 */
+	public void addRGBSample(){
+		synchronized (lock) {
+			s.fetchSample(samples, index % samples.length);
+			index+=3; //skips 3 indices instead of 1, since each sample adds 3 elements to array
+		}
+	}
+	
+	/**
 	 * Fills the entire sample array with new readings separated by a time interval.
 	 * 
 	 * @param period The time interval between two readings.
+	 * @param boolean The flag indicating if RGB samples.
+	 */
+	public void saturateSamples(int period, boolean RGB){
+		for(int i=0; i<window; i++){
+			if(!RGB){
+				addSample();
+			} else {
+				addRGBSample();
+			}
+			try{Thread.sleep(period);}catch(Exception e){}
+		}
+	}
+	
+	/**
+	 * The generic method to be used for US filter
+	 * @param period The time interval between two readings.
 	 */
 	public void saturateSamples(int period){
-		for(int i=0; i<samples.length; i++){
+		for(int i=0; i<window; i++){
 			addSample();
 			try{Thread.sleep(period);}catch(Exception e){}
 		}
@@ -126,6 +177,33 @@ public class Filter {
 				
 			case EMPTY:
 				result = samples[0];
+				break;
+				
+			case RED:
+				for(int j = 0; j<samples.length; j+=3){
+					if(samples[j]<1){
+						result = samples[j];
+						break;
+					}
+				}
+				break;
+			
+			case GREEN:
+				for(int j = 1; j<samples.length; j+=3){
+					if(samples[j]<1){
+						result = samples[j];
+						break;
+					}
+				}
+				break;
+				
+			case BLUE:
+				for(int j = 2; j<samples.length; j+=3){
+					if(samples[j]<1){
+						result = samples[j];
+						break;
+					}
+				}
 				break;
 			}
 		}

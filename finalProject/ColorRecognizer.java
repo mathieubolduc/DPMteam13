@@ -19,7 +19,8 @@ public class ColorRecognizer {
 	private Navigator navigator;
 	private Odometer odometer;
 	private Launcher launcher;
-	private final static double RED_R_THRESHOLD = 0.01, RED_G_THRESHOLD = 0.001, RED_B_THRESHOLD = 0.001,
+	private boolean recognizing = true;
+	private final static double RED_R_THRESHOLD = 0.02, RED_G_THRESHOLD = 0.03, RED_B_THRESHOLD = 0.02,
 								BLUE_G_THRESHOLD = 0.01, BLUE_B_THRESHOLD = 0.01;
 	private final static int COOLDOWN = 300;
 		
@@ -44,34 +45,34 @@ public class ColorRecognizer {
 	
 	//recognize a ball's color and perform either grab or navigate to next ball
 	public void recognize(color c){
-		switch(c){
-		case RED:
-			if(checkColor(color.RED)==true){
-				//grab ball
-				launcher.launch(mode.GRAB);
-			} else {
-				//go to next ball
-				navigator.turnBy(Math.PI/2);
-				try{Thread.sleep(500);}catch(Exception e){}
-				this.recognize(c);
-			}
-		case BLUE:
-			if(checkColor(color.BLUE)==true){
-				//grab ball
-				launcher.launch(mode.GRAB);
-			} else {
-				//go to next ball
-				navigator.turnBy(Math.PI/2);
-				try{Thread.sleep(500);}catch(Exception e){}
-				this.recognize(c);
+		while(recognizing){
+			switch(c){
+			case RED:
+				if(checkColor(color.RED)==true){
+					//grab ball
+//					launcher.launch(mode.GRAB);
+					Sound.beep();
+				} else {
+					//go to next ball
+					try{Thread.sleep(100);}catch(Exception e){}
+				}
+			case BLUE:
+				if(checkColor(color.BLUE)==true){
+					//grab ball
+//					launcher.launch(mode.GRAB);
+					Sound.beep();
+				} else {
+					//go to next ball
+					try{Thread.sleep(100);}catch(Exception e){}
+				}
 			}
 		}
 	}
 	
 	private boolean checkColor(color c){
-		Filter rFilter = new Filter(Type.RED, colorSensor.getRGBMode(),15);
-		Filter gFilter = new Filter(Type.GREEN, colorSensor.getRGBMode(),15);
-		Filter bFilter = new Filter(Type.BLUE, colorSensor.getRGBMode(),15);
+		Filter rFilter = new Filter(Type.RED, colorSensor.getRGBMode(),5);
+		Filter gFilter = new Filter(Type.GREEN, colorSensor.getRGBMode(),5);
+		Filter bFilter = new Filter(Type.BLUE, colorSensor.getRGBMode(),5);
 		switch(c){
 		case RED:
 			
