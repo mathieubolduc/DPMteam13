@@ -48,7 +48,7 @@ public class PathTest {
 		Odometer odometer = new Odometer(leftMotor, rightMotor, null, TRACK, WHEEL_RADIUS);	//the gyro is null if we dont want to use it
 		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
 		ObstacleAvoider obstacleAvoider = new ObstacleAvoider(navigator, odometer, usSensor);
-		Localizer localizer = new Localizer(navigator, odometer, usSensor, null, SENSOR_DIST_TANGENT);
+		Localizer localizer = new Localizer(navigator, odometer, usSensor, null, SENSOR_DIST_TANGENT, 1);
 		//OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, colorSensor, null, SENSOR_DIST_TANGENT, 0);
 		Launcher launcher = new Launcher(launchMotor);
 		Aegis aegis = new Aegis(flapsMotor);
@@ -79,8 +79,10 @@ public class PathTest {
 		
 		//do stuff
 		localizer.localize(type.LIGHT);
-		//navigator.turnTo(0);
-		//navigator.waitForStop();
+		navigator.travelTo(0, 0);
+		navigator.waitForStop();
+		navigator.turnTo(0);
+		navigator.waitForStop();
 	}
 
 }

@@ -50,7 +50,7 @@ public class PathTest2 {
 		Odometer odometer = new Odometer(leftMotor, rightMotor, null, TRACK, WHEEL_RADIUS);	//the gyro is null if we dont want to use it
 		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
 		ObstacleAvoider obstacleAvoider = new ObstacleAvoider(navigator, odometer, usSensor);
-		Localizer localizer = new Localizer(navigator, odometer, usSensor, colorSensor, SENSOR_DIST_TANGENT);
+		Localizer localizer = new Localizer(navigator, odometer, usSensor, colorSensor, SENSOR_DIST_TANGENT, 4);
 		//OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, colorSensor, null, SENSOR_DIST_TANGENT, 0);
 		Launcher launcher = new Launcher(launchMotor);
 		Aegis aegis = new Aegis(flapsMotor);
@@ -80,41 +80,7 @@ public class PathTest2 {
 		//odometryCorrection.start();
 		
 		//do stuff
-		/*
-		navigator.travelTo(60, 60);
-		double[][] checkPoints = obstacleAvoider.avoid(true);
-		localizer.localize(type.LIGHT);
-		navigator.travelTo(60, 60);
-		navigator.waitForStop();
-		navigator.turnTo(0);
-		navigator.waitForStop();
-		Sound.beep();
-		Button.waitForAnyPress();
-		Utility.reverse(checkPoints);
-		for(double[] checkPoint : checkPoints){
-			navigator.travelTo(checkPoint);
-			navigator.waitForStop();
-		}
-		navigator.travelTo(0, 0);
-		navigator.waitForStop();
-		localizer.localize(type.LIGHT);
-		navigator.travelTo(0, 0);
-		navigator.waitForStop();
-		navigator.turnTo(0);
-		navigator.waitForStop();
-		Sound.beep();
-		*/
-		long time = System.currentTimeMillis() + 60*1000*2;
-		while(System.currentTimeMillis() < time){
-			navigator.travelTo(Math.random()*60, Math.random()*60);
-			navigator.waitForStop();
-		}
-		navigator.travelTo(0, 0);
-		navigator.waitForStop();
-		navigator.turnTo(0);
-		navigator.waitForStop();
-		Sound.beep();
-		Button.waitForAnyPress();
+		odometer.setTheta(Math.PI/2);
 		localizer.localize(type.LIGHT);
 		navigator.travelTo(0, 0);
 		navigator.waitForStop();
