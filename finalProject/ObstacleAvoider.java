@@ -1,5 +1,7 @@
 package finalProject;
 
+import java.util.ArrayList;
+
 import finalProject.Filter.Type;
 import lejos.hardware.Sound;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
@@ -18,7 +20,7 @@ public class ObstacleAvoider{
 	private Odometer odometer;
 	public Filter usFilter;
 	private static final double MIN_DISTANCE = 0.3;
-	private static final int AVOID_DISTANCE = 30;
+	private static final int AVOID_DISTANCE = 40;
 	private static final int PERIOD = 10;
 	private boolean isPolling;
 	
@@ -39,11 +41,15 @@ public class ObstacleAvoider{
 	
 	/**
 	 * Makes the robot avoid obstacles while trying to reach the navigator's current target.
-	 * Waits until the navigator reaches its target to terminate.
+	 * Returns when the navigator reaches its initial target.
+	 * and saves all moves made by the obstacle avoider in a double array.
 	 * 
 	 * @param direction The direction the robot will turn to when it sees a wall. True for left, false for right.
+	 * @return A double[][] containing all moves made by the obstacle avoider in the form {x1, y1} , {x2, y2} ...
+	 * The last {x, y} is always the final destination of the robot. As such, if the avoid() method did not have to
+	 * avoid any obstacle, it will return {{x, y}} where x, y are the initial destination coordinates.
 	 */
-	public void avoid(boolean direction){
+	public double[][] avoid(boolean direction){
 		(new Thread(new Runnable(){
 			public void run(){
 				while(isPolling){
@@ -52,18 +58,23 @@ public class ObstacleAvoider{
 			}
 		})).start();
 		double distance = usFilter.getFilteredData();
+		ArrayList<double[]> checkPoints = new ArrayList<double[]>();
 		int sign = direction ? 1 : -1;
 		usFilter.saturateSamples(0);
 		while(navigator.isNavigating()){
 			if(distance < MIN_DISTANCE && distance > 0 && !navigator.isTurning()){
 				navigator.pause();
 				Sound.beep();
-				double[] destination = new double[]{navigator.getTargetX(), navigator.getTargetY()};
+				double[] destination = {navigator.getTargetX(), navigator.getTargetY()};
 				navigator.turnBy(Math.PI/2 * sign);
 				navigator.waitForStop();
 				navigator.travelTo(odometer.getX() + AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + AVOID_DISTANCE * Math.sin(odometer.getTheta()));
+				checkPoints.add(new double[]{navigator.getTargetX(), navigator.getTargetY()});
 				navigator.waitForStop();
-				navigator.turnBy(Math.PI * 0.6 * -sign);
+				navigator.turnBy(-Math.PI/2 * sign);
+				navigator.waitForStop();
+				navigator.travelTo(odometer.getX() + 1.5*AVOID_DISTANCE * Math.cos(odometer.getTheta()), odometer.getY() + 1.5*AVOID_DISTANCE * Math.sin(odometer.getTheta()));
+				checkPoints.add(new double[]{navigator.getTargetX(), navigator.getTargetY()});
 				navigator.waitForStop();
 				navigator.setTarget(destination);
 			}
@@ -72,5 +83,6 @@ public class ObstacleAvoider{
 			navigator.move();
 		}
 		isPolling = false;
+		return checkPoints.toArray(new double[checkPoints.size()][]);
 	}
 }

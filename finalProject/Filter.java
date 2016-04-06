@@ -15,7 +15,7 @@ public class Filter {
 	
 	private final Type t;
 	private final SampleProvider s;
-	private float[] samples;
+	public float[] samples;
 	private int index;
 	private int window;
 	private Object lock;

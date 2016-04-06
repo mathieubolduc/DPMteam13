@@ -23,6 +23,9 @@ public class ColorRecognizer {
 	private final static double RED_R_THRESHOLD = 0.02, RED_G_THRESHOLD = 0.03, RED_B_THRESHOLD = 0.02,
 								BLUE_G_THRESHOLD = 0.01, BLUE_B_THRESHOLD = 0.01;
 	private final static int COOLDOWN = 300;
+	public Filter rFilter;
+	public Filter gFilter;
+	public Filter bFilter;
 		
 	public enum color{
 		/**
@@ -37,6 +40,9 @@ public class ColorRecognizer {
 	}
 	
 	public ColorRecognizer(Navigator navigator, Odometer odometer, EV3ColorSensor colorSensor, Launcher launcher){
+		rFilter = new Filter(Type.RED, colorSensor.getRGBMode(),5);
+		gFilter = new Filter(Type.GREEN, colorSensor.getRGBMode(),5);
+		bFilter = new Filter(Type.BLUE, colorSensor.getRGBMode(),5);
 		this.navigator = navigator;
 		this.odometer = odometer;
 		this.colorSensor = colorSensor;
@@ -51,7 +57,7 @@ public class ColorRecognizer {
 				if(checkColor(color.RED)==true){
 					//grab ball
 //					launcher.launch(mode.GRAB);
-					Sound.beep();
+//					Sound.beep();
 				} else {
 					//go to next ball
 					try{Thread.sleep(100);}catch(Exception e){}
@@ -60,7 +66,7 @@ public class ColorRecognizer {
 				if(checkColor(color.BLUE)==true){
 					//grab ball
 //					launcher.launch(mode.GRAB);
-					Sound.beep();
+//					Sound.beep();
 				} else {
 					//go to next ball
 					try{Thread.sleep(100);}catch(Exception e){}
@@ -70,9 +76,12 @@ public class ColorRecognizer {
 	}
 	
 	private boolean checkColor(color c){
-		Filter rFilter = new Filter(Type.RED, colorSensor.getRGBMode(),5);
-		Filter gFilter = new Filter(Type.GREEN, colorSensor.getRGBMode(),5);
-		Filter bFilter = new Filter(Type.BLUE, colorSensor.getRGBMode(),5);
+		rFilter.samples = new float[5*3];
+		rFilter.saturateSamples(0,true);
+		gFilter.samples = new float[5*3];
+		gFilter.saturateSamples(0,true);
+		bFilter.samples = new float[5*3];
+		bFilter.saturateSamples(0,true);
 		switch(c){
 		case RED:
 			
