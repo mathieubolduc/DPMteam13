@@ -2,10 +2,8 @@ package testing;
 
 import java.io.IOException;
 
-
-import finalProject.Launcher.mode;
-import finalProject.Localizer.type;
-import finalProject.ColorRecognizer.color;
+import finalProject.Localizer.Type;
+import finalProject.ColorRecognizer.Color;
 import finalProject.*;
 import lejos.hardware.Button;
 import lejos.hardware.Sound;
@@ -44,9 +42,9 @@ public class ColorTest {
 		ObstacleAvoider obstacleAvoider = new ObstacleAvoider(navigator, odometer, usSensor);
 		Localizer localizer = new Localizer(navigator, odometer, usSensor, null, SENSOR_DIST_TANGENT, 1);
 		//OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, colorSensor, null, SENSOR_DIST_TANGENT, 0);
-		Launcher launcher = new Launcher(launchMotor);
+		//Launcher launcher = new Launcher(launchMotor);
 		Aegis aegis = new Aegis(flapsMotor);
-		ColorRecognizer colorRecognizer = new ColorRecognizer(navigator, odometer, colorSensor, launcher);
+		ColorRecognizer colorRecognizer = new ColorRecognizer(navigator, colorSensor);
 		Display display = new Display(t, new Object[]{odometer, obstacleAvoider.usFilter, colorRecognizer.rFilter,
 									  colorRecognizer.gFilter, colorRecognizer.bFilter});	//set the objects we want to display
 		//WifiConnection wifiConnection = new WifiConnection(SERVER_IP, TEAM_NUMBER);
@@ -63,12 +61,12 @@ public class ColorTest {
 		//robot performs grab if color is red
 		//robot turns if color is not red
 		Button.waitForAnyPress();
-		colorRecognizer.recognize(color.RED);
+		colorRecognizer.recognize(Color.RED);
 		//press again for recognizing blue color
 		//robot performs grab if color is blue
 		//robot turns if color is not blue
 		Button.waitForAnyPress();
-		colorRecognizer.recognize(color.BLUE);
+		colorRecognizer.recognize(Color.BLUE);
 		
 	}
 

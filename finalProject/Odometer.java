@@ -15,7 +15,8 @@ public class Odometer extends Thread {
 	//member variables
 	private double x, y, theta;
 	private final double TRACK, WHEEL_RADIUS;
-	private final static int PERIOD = 25;	//the maximum speed the odometer can operate at
+	private final static double CORRECTION = 1.016;
+	private final static int PERIOD = 15;	//the maximum speed the odometer can operate at
 	private final EV3LargeRegulatedMotor leftMotor;
 	private final EV3LargeRegulatedMotor rightMotor;
 	private final EV3GyroSensor gyroSensor;
@@ -75,11 +76,11 @@ public class Odometer extends Thread {
 			synchronized (lock) {
 				
 				//calculate the change in distance
-				distance = (tachoR + tachoL)/360d * Math.PI * WHEEL_RADIUS;
+				distance = (tachoR*CORRECTION + tachoL)/360d * Math.PI * WHEEL_RADIUS;
 				
 				//calculate the change in theta. Use the gyro sensor if there is one, else use the tachos
 				if(gyroSensor == null){
-					deltaTheta = (tachoR - tachoL)/(360d * TRACK) * 2 * Math.PI * WHEEL_RADIUS;
+					deltaTheta = (tachoR*CORRECTION - tachoL)/(360d * TRACK) * 2 * Math.PI * WHEEL_RADIUS;
 				}
 				else{
 					gyroSensor.getAngleMode().fetchSample(sample, 0);

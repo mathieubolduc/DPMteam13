@@ -1,8 +1,6 @@
 package finalProject;
 
 import finalProject.Filter.Type;
-import finalProject.Launcher.mode;
-import lejos.hardware.Sound;
 import lejos.hardware.sensor.EV3ColorSensor;
 
 /**
@@ -15,19 +13,16 @@ import lejos.hardware.sensor.EV3ColorSensor;
 public class ColorRecognizer {
 	
 	//member variables
-	private EV3ColorSensor colorSensor;
 	private Navigator navigator;
-	private Odometer odometer;
-	private Launcher launcher;
 	private boolean recognizing = true;
 	private final static double RED_R_THRESHOLD = 0.02, RED_G_THRESHOLD = 0.03, RED_B_THRESHOLD = 0.02,
 								BLUE_G_THRESHOLD = 0.01, BLUE_B_THRESHOLD = 0.01;
-	private final static int COOLDOWN = 300;
+//	private final static int COOLDOWN = 300;
 	public Filter rFilter;
 	public Filter gFilter;
 	public Filter bFilter;
 		
-	public enum color{
+	public enum Color{
 		/**
 		 * Targets red balls.
 		 */
@@ -39,22 +34,19 @@ public class ColorRecognizer {
 		BLUE
 	}
 	
-	public ColorRecognizer(Navigator navigator, Odometer odometer, EV3ColorSensor colorSensor, Launcher launcher){
+	public ColorRecognizer(Navigator navigator, EV3ColorSensor colorSensor){
 		rFilter = new Filter(Type.RED, colorSensor.getRGBMode(),5);
 		gFilter = new Filter(Type.GREEN, colorSensor.getRGBMode(),5);
 		bFilter = new Filter(Type.BLUE, colorSensor.getRGBMode(),5);
 		this.navigator = navigator;
-		this.odometer = odometer;
-		this.colorSensor = colorSensor;
-		this.launcher = launcher;
 	}
 	
 	//recognize a ball's color and perform either grab or navigate to next ball
-	public void recognize(color c){
+	public void recognize(Color c){
 		while(recognizing){
 			switch(c){
 			case RED:
-				if(checkColor(color.RED)==true){
+				if(checkColor(Color.RED)){
 					//grab ball
 //					launcher.launch(mode.GRAB);
 //					Sound.beep();
@@ -63,7 +55,7 @@ public class ColorRecognizer {
 					try{Thread.sleep(100);}catch(Exception e){}
 				}
 			case BLUE:
-				if(checkColor(color.BLUE)==true){
+				if(checkColor(Color.BLUE)){
 					//grab ball
 //					launcher.launch(mode.GRAB);
 //					Sound.beep();
@@ -75,7 +67,7 @@ public class ColorRecognizer {
 		}
 	}
 	
-	private boolean checkColor(color c){
+	private boolean checkColor(Color c){
 		rFilter.samples = new float[5*3];
 		rFilter.saturateSamples(0,true);
 		gFilter.samples = new float[5*3];
@@ -104,5 +96,17 @@ public class ColorRecognizer {
 			}
 		}
 		return false;
+	}
+	
+	public Color waitForBall(){
+		boolean isRed, isBlue;
+		while(navigator.isNavigating()){
+			isRed = checkColor(Color.RED);
+			isBlue = checkColor(Color.BLUE);
+			if(isRed || isBlue){
+				return isRed ? Color.RED : Color.BLUE;
+			}
+		}
+		return null;
 	}
 }

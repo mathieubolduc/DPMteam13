@@ -13,8 +13,8 @@ public class Navigator extends Thread{
 	private Odometer odometer;
 	private EV3LargeRegulatedMotor leftMotor, rightMotor;
 	private double targetX, targetY, targetT, relativeT;
-	private static final double TOLERANCE = 1.0, ANGLE_TOLERANCE = Math.PI / 64;
-	private static final int FORWARD_SPEED = 400, ROTATE_SPEED = 200;
+	private static final double TOLERANCE = 1.0, LOOSE_ANGLE_TOLERANCE = Math.PI / 60, HARD_ANGLE_TOLERANCE = Math.PI / 180;
+	private int FORWARD_SPEED = 400, ROTATE_SPEED = 200, CORRECT_SPEED = 10;
 	private static final double MIN_SPEED_RATIO = 0.2;
 	private static final int PERIOD = 50;
 	private Object lock;
@@ -50,7 +50,8 @@ public class Navigator extends Thread{
 	public void run(){
 		
 		long navigateStart, navigateEnd;
-		double lastTheta = 0;
+		double lastTheta = 0, distance = 0, angleTolerance;
+		int leftCorrection = 0, rightCorrection = 0;
 		int rotateSpeed, forwardSpeed;
 		
 		while(true){
@@ -69,8 +70,17 @@ public class Navigator extends Thread{
 					if(!Double.isNaN(targetT) || !Double.isNaN(targetX)){
 						//the navigator prioritizes correcting absolute angles, then position, then relative angles.
 						
+						if(!Double.isNaN(targetX)){
+							distance = Math.sqrt(Math.pow(odometer.getX() - targetX, 2) + Math.pow(odometer.getY() - targetY, 2));
+							angleTolerance = LOOSE_ANGLE_TOLERANCE;
+						}
+						else{
+							angleTolerance = HARD_ANGLE_TOLERANCE;
+						}
+						
+						
 						//check if theta is off-course
-						if(!Double.isNaN(targetT) && Utility.angleDiff(odometer.getTheta(), targetT) > ANGLE_TOLERANCE){
+						if(!Double.isNaN(targetT) && Utility.angleDiff(odometer.getTheta(), targetT) > angleTolerance){
 							navigating = true;
 							turning = true;
 							//correct the angle by turning
@@ -90,17 +100,31 @@ public class Navigator extends Thread{
 							}
 						}
 						//check if the position is off-course
-						else if(!Double.isNaN(targetX) && !Double.isNaN(targetY)  &&  Math.abs(odometer.getX() - targetX) > TOLERANCE || Math.abs(odometer.getY() - targetY) > TOLERANCE){
+						else if(!Double.isNaN(targetX) &&  distance > TOLERANCE){
 							navigating = true;
 							turning = false;
-							forwardSpeed = (int) (Math.min(Math.sqrt(Math.pow(odometer.getX() - targetX, 2) + Math.pow(odometer.getY() - targetY, 2))/5 + MIN_SPEED_RATIO, 1) * FORWARD_SPEED);
-							leftMotor.setSpeed(forwardSpeed);
-							rightMotor.setSpeed(forwardSpeed);
+							forwardSpeed = (int) (Math.min(distance/10 + MIN_SPEED_RATIO, 1) * FORWARD_SPEED);
+							if(Utility.angleDiff(odometer.getTheta(), targetT) > HARD_ANGLE_TOLERANCE){
+								if(odometer.getTheta() > targetT || (targetT - odometer.getTheta()) > Math.PI*2-LOOSE_ANGLE_TOLERANCE){
+									//correct towards left
+									leftCorrection = 0;
+									rightCorrection = CORRECT_SPEED;
+								}
+								else{
+									//correct towards right
+									leftCorrection = CORRECT_SPEED;
+									rightCorrection = 0;
+								}
+							}
 							if(forward){
+								leftMotor.setSpeed(forwardSpeed - leftCorrection);
+								rightMotor.setSpeed(forwardSpeed - rightCorrection);
 								leftMotor.forward();
 								rightMotor.forward();
 							}
 							else{
+								leftMotor.setSpeed(forwardSpeed - rightCorrection);
+								rightMotor.setSpeed(forwardSpeed - leftCorrection);
 								leftMotor.backward();
 								rightMotor.backward();
 							}
@@ -121,7 +145,7 @@ public class Navigator extends Thread{
 					//theta, x and y are all NaN, so check if relative turning should be used
 					else if(!Double.isNaN(relativeT)){
 						//if the relative angle is small enough, stop turning
-						if(Math.abs(relativeT) < ANGLE_TOLERANCE){
+						if(Math.abs(relativeT) < LOOSE_ANGLE_TOLERANCE){
 							relativeT = Double.NaN;
 							navigating = false;
 							turning = false;
@@ -467,6 +491,10 @@ public class Navigator extends Thread{
 	
 	public boolean isTurning(){
 		return turning;
+	}
+	
+	public void setSpeed(int speed){
+		FORWARD_SPEED = speed;
 	}
 	
 }

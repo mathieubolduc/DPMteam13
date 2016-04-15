@@ -3,24 +3,25 @@ package testing;
 import java.io.IOException;
 
 import finalProject.Aegis;
+import finalProject.ColorRecognizer;
+import finalProject.ColorRecognizer.Color;
 import finalProject.Display;
 import finalProject.Filter;
 import finalProject.Launcher;
-import finalProject.Launcher.mode;
 import finalProject.Localizer;
-import finalProject.Localizer.type;
+import finalProject.Localizer.Type;
 import finalProject.Navigator;
 import finalProject.ObstacleAvoider;
 import finalProject.Odometer;
 import finalProject.OdometryCorrection;
 import finalProject.Utility;
-import finalProject.Filter.Type;
 import lejos.hardware.Button;
 import lejos.hardware.Sound;
 import lejos.hardware.ev3.LocalEV3;
 import lejos.hardware.lcd.TextLCD;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.sensor.EV3ColorSensor;
+import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
 import wifi.WifiConnection;
 
@@ -28,7 +29,9 @@ public class PathTest2 {
 	
 	//motors and sensors
 	private static final TextLCD t = LocalEV3.get().getTextLCD();
-	private static final EV3ColorSensor colorSensor = new EV3ColorSensor(LocalEV3.get().getPort("S1"));
+	private static final EV3TouchSensor touchSensor = new EV3TouchSensor(LocalEV3.get().getPort("S4"));
+	private static final EV3ColorSensor colorSensor1 = new EV3ColorSensor(LocalEV3.get().getPort("S1"));
+	private static final EV3ColorSensor colorSensor2 = new EV3ColorSensor(LocalEV3.get().getPort("S3"));
 	private static final EV3UltrasonicSensor usSensor = new EV3UltrasonicSensor(LocalEV3.get().getPort("S2"));
 	private static final EV3LargeRegulatedMotor leftMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("A"));
 	private static final EV3LargeRegulatedMotor launchMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("B"));
@@ -36,7 +39,7 @@ public class PathTest2 {
 	private static final EV3LargeRegulatedMotor rightMotor = new EV3LargeRegulatedMotor(LocalEV3.get().getPort("D"));
 	
 	//constants
-	private static final double TRACK = 15.7, WHEEL_RADIUS = 2.05, SENSOR_DIST_TANGENT = 17.5, SQUARE_LENGTH = 30.67;
+	private static final double TRACK = 17.4, WHEEL_RADIUS = 2.05, SENSOR_DIST_TANGENT = 16.5, SQUARE_LENGTH = 30.67;
 	private static final String SERVER_IP = "142.157.179.36";
 	private static final int TEAM_NUMBER = 13;
 	
@@ -50,10 +53,11 @@ public class PathTest2 {
 		Odometer odometer = new Odometer(leftMotor, rightMotor, null, TRACK, WHEEL_RADIUS);	//the gyro is null if we dont want to use it
 		Navigator navigator = new Navigator(odometer, leftMotor, rightMotor);
 		ObstacleAvoider obstacleAvoider = new ObstacleAvoider(navigator, odometer, usSensor);
-		Localizer localizer = new Localizer(navigator, odometer, usSensor, colorSensor, SENSOR_DIST_TANGENT, 4);
+		Localizer localizer = new Localizer(navigator, odometer, usSensor, colorSensor1, SENSOR_DIST_TANGENT, 1);
 		//OdometryCorrection odometryCorrection = new OdometryCorrection(odometer, navigator, colorSensor, null, SENSOR_DIST_TANGENT, 0);
-		Launcher launcher = new Launcher(launchMotor);
+		Launcher launcher = new Launcher(launchMotor, touchSensor);
 		Aegis aegis = new Aegis(flapsMotor);
+		ColorRecognizer colorRecognizer = new ColorRecognizer(navigator, colorSensor2);
 		Display display = new Display(t, new Object[]{odometer, obstacleAvoider.usFilter});	//set the objects we want to display
 		//WifiConnection wifiConnection = new WifiConnection(SERVER_IP, TEAM_NUMBER);
 		
@@ -80,12 +84,10 @@ public class PathTest2 {
 		//odometryCorrection.start();
 		
 		//do stuff
-		odometer.setTheta(Math.PI/2);
-		localizer.localize(type.LIGHT);
-		navigator.travelTo(0, 0);
+		navigator.turnBy(Math.PI*2);
 		navigator.waitForStop();
+		Sound.beep();
 		navigator.turnTo(0);
-		navigator.waitForStop();
 	}
 
 }

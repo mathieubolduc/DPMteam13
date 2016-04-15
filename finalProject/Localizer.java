@@ -1,6 +1,5 @@
 package finalProject;
 
-import finalProject.Filter.Type;
 import lejos.hardware.Sound;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3UltrasonicSensor;
@@ -20,10 +19,10 @@ public class Localizer {
 	private int corner;
 	private Navigator navigator;
 	private Odometer odometer;
-	private final static double LIGHT_THRESHOLD = 0.2, US_THRESHOLD = 0.4, US_CORRECTION = 0.1, LIGHT_CORRECTION = 0.05, NOISE_MARGIN = 0.04, SQUARE_LENGTH = 30.67;
+	private final static double LIGHT_THRESHOLD = 0.05, US_THRESHOLD = 0.4, US_CORRECTION = 0/*-0.08*/, LIGHT_CORRECTION = 0.06, NOISE_MARGIN = 0.04, SQUARE_LENGTH = 30.67;
 	private boolean recorded1 = false, recorded2 = true;
 	private double theta1, theta2;
-	private final static int COOLDOWN = 300;
+	private final static int COOLDOWN = 300, MAX_LENGTH = 10;
 	
 	/**
 	 * Constructor for Localizer.
@@ -49,25 +48,47 @@ public class Localizer {
 	 * 
 	 * @param t The type of localization to perform.
 	 */
-	public void localize(type t){
+	public void localize(Type t){
 		switch(t){
 			case LIGHT:
-				this.lightLocalization();
+				lightLocalization();
 				break;
+				
 			case US:
-				this.usLocalization();
-				break;
-			case US_AND_LIGHT:
-				this.usLocalization();
+				usLocalization();
+				//find the Y
+				Filter usFilter = new Filter(Filter.Type.AVERAGE, usSensor.getDistanceMode(), 5);
+				navigator.turnTo(corner < 2 ? Math.PI*3/2 : Math.PI/2);
+				navigator.waitForStop();
 				Sound.beep();
-				navigator.travelTo(25, 25);
-				navigator.turnTo(Math.PI/4);
-				this.lightLocalization();
+				usFilter.saturateSamples(20);
+				if(corner < 2)
+					odometer.setY(100*usFilter.getFilteredData() - 25);
+				else
+					odometer.setY(25 - 100*usFilter.getFilteredData() + SQUARE_LENGTH*10);
+					
+				//find the X
+				navigator.turnTo((corner == 0 || corner == 3) ? Math.PI : 0);
+				navigator.waitForStop();
+				Sound.beep();
+				usFilter.saturateSamples(20);
+				if(corner == 0 || corner == 3)
+					odometer.setX(100*usFilter.getFilteredData()-25);
+				else
+					odometer.setX(25 - 100*usFilter.getFilteredData() + SQUARE_LENGTH*10);
+				
+				break;
+				
+			case US_AND_LIGHT:
+				usLocalization();
+				navigator.travelTo((corner == 0 || corner == 3) ? 10 : MAX_LENGTH*SQUARE_LENGTH-10, corner < 2 ? 5 : MAX_LENGTH*SQUARE_LENGTH-5);
+				navigator.waitForStop();
+				lightLocalization();
 				break;
 		}
 	}
 	
-	public enum type{
+	public enum Type{
 		/**
 		 * Performs the light localization.
 		 * The robot must be close enough to a line intersection to see 4 lines.
@@ -90,7 +111,7 @@ public class Localizer {
 	private void usLocalization(){
 		
 		//find the angle
-		Filter usFilter = new Filter(Type.AVERAGE, usSensor.getDistanceMode(), 5);
+		Filter usFilter = new Filter(Filter.Type.AVERAGE, usSensor.getDistanceMode(), 5);
 		double[] angles = new double[2];
 		usFilter.saturateSamples(20);
 		navigator.turnBy(Math.PI*2);
@@ -179,32 +200,14 @@ public class Localizer {
 		Sound.beep();
 		
 		odometer.setTheta((angles[0] < angles[1] ? 225d/180*Math.PI : 45d/180*Math.PI) -(angles[0] + angles[1]) / 2 + odometer.getTheta() + US_CORRECTION + corner*Math.PI/2);
-		
-		//find the Y
-		navigator.turnTo(corner < 2 ? Math.PI*3/2 : Math.PI/2);
-		navigator.waitForStop();
-		Sound.beep();
-		usFilter.saturateSamples(20);
-		if(corner < 2)
-			odometer.setY(100*usFilter.getFilteredData() - 25);
-		else
-			odometer.setY(25 - 100*usFilter.getFilteredData() + SQUARE_LENGTH*10);
-			
-		//find the X
-		navigator.turnTo((corner == 0 || corner == 3) ? Math.PI : 0);
-		navigator.waitForStop();
-		Sound.beep();
-		usFilter.saturateSamples(20);
-		if(corner == 0 || corner == 3)
-			odometer.setX(100*usFilter.getFilteredData()-25);
-		else
-			odometer.setX(25 - 100*usFilter.getFilteredData() + SQUARE_LENGTH*10);
+		odometer.setX((corner == 0 || corner == 3) ? 0 : MAX_LENGTH*SQUARE_LENGTH);
+		odometer.setY(corner < 2 ? 0 : MAX_LENGTH*SQUARE_LENGTH);
 		
 	}
 	
 	//performs a localization using the light sensor by turning 360 deg and detecting 4 lines.
 	private void lightLocalization(){
-		Filter lightFilter = new Filter(Type.DERIVATIVE, colorSensor.getRedMode(), 2);
+		Filter lightFilter = new Filter(Filter.Type.DERIVATIVE, colorSensor.getRedMode(), 2);
 		double[] angles = new double[4];
 		int i=0;
 		long time;
@@ -216,7 +219,7 @@ public class Localizer {
 		lightFilter.saturateSamples(50);
 		
 		//turn 360 deg to hopefully go over 4 lines
-		navigator.turnBy(Math.PI*2);
+		navigator.turnBy(Math.PI*2.1);
 		while(navigator.isNavigating()){
 			lightFilter.addSample();
 			//if there is a line
@@ -240,6 +243,8 @@ public class Localizer {
 			Sound.buzz();
 			return;
 		}
+		
+		navigator.pause();
 		
 		//set the correct coordinates and angle
 		//the corrections are for quadrant 0. For other quadrants just shift the angle index by the quadrant (mod 4)

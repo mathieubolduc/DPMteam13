@@ -30,7 +30,7 @@ public class Aegis {
 	 */
 	public void open(){
 		if(!open){
-			flapsMotor.rotate((int)(360*4.4));
+			flapsMotor.rotate((int)(360*4));
 			open = true;
 		}
 	}
@@ -40,7 +40,7 @@ public class Aegis {
 	 */
 	public void close(){
 		if(open){
-			flapsMotor.rotate((int)(360*4.4));
+			flapsMotor.rotate((int)(-360*4));
 			open = false;
 		}
 	}

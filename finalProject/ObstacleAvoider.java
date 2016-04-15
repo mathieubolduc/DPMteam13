@@ -19,6 +19,8 @@ public class ObstacleAvoider{
 	private Navigator navigator;
 	private Odometer odometer;
 	public Filter usFilter;
+	private static final double SQUARE_LENGTH = 30.67; 
+	private static final int MAX_LENGTH = 10;
 	private static final double MIN_DISTANCE = 0.3;
 	private static final int AVOID_DISTANCE = 40;
 	private static final int PERIOD = 10;
@@ -50,6 +52,7 @@ public class ObstacleAvoider{
 	 * avoid any obstacle, it will return {{x, y}} where x, y are the initial destination coordinates.
 	 */
 	public double[][] avoid(boolean direction){
+		isPolling = true;
 		(new Thread(new Runnable(){
 			public void run(){
 				while(isPolling){
@@ -60,9 +63,12 @@ public class ObstacleAvoider{
 		double distance = usFilter.getFilteredData();
 		ArrayList<double[]> checkPoints = new ArrayList<double[]>();
 		int sign = direction ? 1 : -1;
+		boolean notNearWall;
 		usFilter.saturateSamples(0);
 		while(navigator.isNavigating()){
-			if(distance < MIN_DISTANCE && distance > 0 && !navigator.isTurning()){
+			notNearWall = odometer.getX() > SQUARE_LENGTH*0.5 && odometer.getX() < SQUARE_LENGTH*(MAX_LENGTH-0.5)
+							&& odometer.getY() > SQUARE_LENGTH*0.5 && odometer.getY() < SQUARE_LENGTH*(MAX_LENGTH-0.5);
+			if(distance < MIN_DISTANCE && distance > 0 && !navigator.isTurning() && notNearWall){
 				navigator.pause();
 				Sound.beep();
 				double[] destination = {navigator.getTargetX(), navigator.getTargetY()};
@@ -85,4 +91,5 @@ public class ObstacleAvoider{
 		isPolling = false;
 		return checkPoints.toArray(new double[checkPoints.size()][]);
 	}
+	
 }

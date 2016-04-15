@@ -1,5 +1,7 @@
 package finalProject;
+
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
+import lejos.hardware.sensor.EV3TouchSensor;
 
 /**
  * The class responsible for launching the ball
@@ -11,55 +13,38 @@ public class Launcher{
 	
 	//member variables
 	private EV3LargeRegulatedMotor launchMotor;
-	private Object lock;
+	private EV3TouchSensor touchSensor;
 	
 	
 	/**
 	 * Constructor for Launcher
 	 * 
 	 * @param launchMotor The robot's motor responsible for launching mechanism.
+	 * @param touchSensor The touch sensor that detects when the launching mechanism is rewinded.
 	 */
-	public Launcher(EV3LargeRegulatedMotor launchMotor){
+	public Launcher(EV3LargeRegulatedMotor launchMotor, EV3TouchSensor touchSensor){
 		this.launchMotor = launchMotor;
+		this.touchSensor = touchSensor;
 		launchMotor.resetTachoCount();
-		lock = new Object();
 	}
 	
-	public enum mode{
-		/**
-		 * performs the retrieval of the ball
-		 */
-		GRAB,
-		
-		/**
-		 * performs the launch of the ball
-		 */
-		SHOOT,
-		
-		/**
-		 * resets the launchMotor position
-		 */
-		RESET
+	public void grab(){
+		launchMotor.setSpeed(200);
+		float[] sample = new float[1];
+		launchMotor.backward();
+		do{
+			touchSensor.getTouchMode().fetchSample(sample, 0);
+		} while(sample[0] != 1);
+		launchMotor.stop();
 	}
 	
-	/**
-	 * Rotates the launchMotor to perform launching and grabbing
-	 * 
-	 * @param m The mode that the launcher is operating in
-	 */
-	public void launch(mode m){
-		synchronized (lock){
-			switch(m){
-			case GRAB:
-				launchMotor.rotate(-420);
-				break;
-			case SHOOT:
-				launchMotor.rotate(-180); 
-				break;
-			case RESET:
-				launchMotor.rotateTo(0);
-				launchMotor.stop();
-			}
-		}
+	public void shoot(){
+		launchMotor.setSpeed(700);
+		float[] sample = new float[1];
+		launchMotor.backward();
+		do{
+			touchSensor.getTouchMode().fetchSample(sample, 0);
+		} while(sample[0] != 0);
+		launchMotor.stop();
 	}
 }
